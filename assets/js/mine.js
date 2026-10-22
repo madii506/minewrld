@@ -46,7 +46,7 @@ export function build(scene, mobile) {
   const mesh = (geo, mat, x = 0, y = 0, z = 0, parent = scene, shadow = !mobile) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = shadow; parent.add(m); return m; };
   const P = { bars: [], buds: [], crts: [] };
   const Z_IN = 7, Z_END = -8.6, RAD = 1.5, CY = 1.0, LEN = Z_IN - Z_END;
-  const SH = 20, ZS = Z_IN + .75, SR = 1.9;   // the shaft: from the surface at y=SH down to the tunnel, centred on z=ZS
+  const SH = 30, ZS = Z_IN + .75, SR = 1.9;   // the shaft: from the surface at y=SH down to the tunnel, centred on z=ZS
   Object.assign(P, { SH, ZS, Z_IN });
 
   // ---- outside: a mountain in the rain, a moon behind cloud
@@ -55,7 +55,7 @@ export function build(scene, mobile) {
     const m = g.createRadialGradient(w * .32, h * .25, 0, w * .32, h * .25, 110); m.addColorStop(0, 'rgba(210,215,240,.5)'); m.addColorStop(.15, 'rgba(160,170,220,.2)'); m.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = m; g.fillRect(0, 0, w, h);
     for (let i = 0; i < 36; i++) { const x = rnd() * w, y = rnd() * h * .7, r = 40 + rnd() * 140, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(28,30,50,${.3 + rnd() * .3})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }
   });
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), new THREE.MeshBasicMaterial({ map: sky, side: THREE.BackSide, fog: false, toneMapped: false, color: 0x9a9a9a })); dome.position.set(0, SH - 6, ZS); scene.add(dome); P.sky = dome;
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(118, 40, 20), new THREE.MeshBasicMaterial({ map: sky, side: THREE.BackSide, fog: false, toneMapped: false, color: 0x9a9a9a })); dome.position.set(0, SH - 20, ZS); scene.add(dome); P.sky = dome;
   const rockT = (bump) => tex(1024, 1024, (g, w, h) => {
     g.fillStyle = bump ? '#808080' : '#2a2520'; g.fillRect(0, 0, w, h);
     for (let i = 0; i < 7000; i++) { const x = rnd() * w, y = rnd() * h, r = 2 + rnd() * 18, k = rnd();
@@ -77,17 +77,45 @@ export function build(scene, mobile) {
   const fm = mesh(faceG, faceM, 0, 0, Z_IN + .06); fm.castShadow = false;
   // the surface: wet mud around the collar of the shaft, a headframe over it, a lamp, a sign
   const mudT = tex(1024, 1024, (g, w, h) => { g.fillStyle = '#1b1612'; g.fillRect(0, 0, w, h); for (let i = 0; i < 16000; i++) { const k = rnd(); g.fillStyle = k < .5 ? `rgba(60,50,40,${rnd() * .35})` : k < .95 ? `rgba(0,0,0,${rnd() * .4})` : `rgba(150,120,80,${rnd() * .3})`; const r = .5 + rnd() * 4; g.fillRect(rnd() * w, rnd() * h, r, r); } }, [10, 10]);
-  const gs = new THREE.Shape(); gs.moveTo(-40, -40); gs.lineTo(40, -40); gs.lineTo(40, 40); gs.lineTo(-40, 40); gs.lineTo(-40, -40);
+  // the plateau the headframe stands on: flat mud with the shaft's collar cut out of it
+  const gs = new THREE.Shape(); gs.moveTo(-12, -12 - ZS); gs.lineTo(12, -12 - ZS); gs.lineTo(12, 12 - ZS); gs.lineTo(-12, 12 - ZS); gs.lineTo(-12, -12 - ZS);
   const gh = new THREE.Path(); for (let i = 0; i <= 40; i++) { const a = Math.PI * 2 * i / 40; gh.lineTo(Math.cos(a) * 1.5, -ZS + Math.sin(a) * 1.5); } gs.holes.push(gh);
   const gg = new THREE.ShapeGeometry(gs, 8); gg.rotateX(-Math.PI / 2);
-  const ggp = gg.attributes.position; for (let i = 0; i < ggp.count; i++) { const x = ggp.getX(i), z = ggp.getZ(i), d = Math.hypot(x, z - ZS); if (d > 6) ggp.setY(i, (fbm(x * .12, z * .12, 2) - .45) * Math.min(4, (d - 6) * .35)); }
-  gg.computeVertexNormals();
-  const surf = mesh(gg, std({ map: mudT, roughness: .5, metalness: .15, color: 0x8a7a6a }), 0, SH, 0, scene, false); surf.receiveShadow = !mobile;
-  // rain over the surface
-  const N = mobile ? 380 : 900, rp = new Float32Array(N * 6);
-  for (let i = 0; i < N; i++) { const x = (rnd() - .5) * 18, y = rnd() * 6, z = ZS - 7 + rnd() * 16; rp.set([x, y, z, x - .01, y - .18, z], i * 6); }
+  const mudM = std({ map: mudT, roughness: .5, metalness: .15, color: 0x8a7a6a });
+  const surf = mesh(gg, mudM, 0, SH, 0, scene, false); surf.receiveShadow = !mobile;
+  // the hill falls away from the plateau; further out the land rolls, and a ring of mountains stands against the sky
+  const hillH = (x, z) => { const d = Math.max(Math.abs(x), Math.abs(z)), r = Math.hypot(x, z); if (d < 12.2) return -.04;
+    const fall = -Math.min(14, (r - 11) * .42) * Math.min(1, (r - 11) / 6);
+    const roll = (fbm(x * .035 + 3, z * .035 + 9, 4) - .5) * 16 * Math.min(1, Math.max(0, (r - 24) / 30));
+    const ring = Math.max(0, (r - 70) / 40) ** 1.4 * (24 + (fbm(x * .02, z * .02, 7) - .4) * 50);
+    return fall + roll + ring + (vnoise(x * .4, z * .4, 2) - .5) * .5; };
+  P.hillH = hillH;
+  const TS = mobile ? 100 : 170, TW = 250, tgeo = new THREE.PlaneGeometry(TW, TW, TS, TS); tgeo.rotateX(-Math.PI / 2);
+  const tpos = tgeo.attributes.position; for (let i = 0; i < tpos.count; i++) tpos.setY(i, hillH(tpos.getX(i), tpos.getZ(i)));
+  { const idx = tgeo.index.array, keep = []; for (let f = 0; f < idx.length; f += 3) { const a = idx[f], b = idx[f + 1], c = idx[f + 2];
+      const cx = (tpos.getX(a) + tpos.getX(b) + tpos.getX(c)) / 3, cz = (tpos.getZ(a) + tpos.getZ(b) + tpos.getZ(c)) / 3; if (Math.max(Math.abs(cx), Math.abs(cz)) < 11.2) continue; keep.push(a, b, c); }
+    tgeo.setIndex(keep); }
+  tgeo.computeVertexNormals();
+  const terrT = mudT.clone(); terrT.repeat.set(60, 60); terrT.needsUpdate = true;
+  mesh(tgeo, std({ map: terrT, roughness: .7, metalness: .05, color: 0x5d5246 }), 0, SH, ZS, scene, false);
+  // pines on the slopes, black against the sky
+  { const NTR = mobile ? 70 : 170, pineM = std({ color: 0x0b120e, roughness: .9 }), trunkM = std({ color: 0x1a120c, roughness: .9 });
+    const cone = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 7), pineM, NTR), trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(.1, .14, 1, 5), trunkM, NTR);
+    let n = 0; const S5 = new THREE.Vector3(), Qy = new THREE.Quaternion(), TM = new THREE.Matrix4();
+    for (let k = 0; k < NTR * 4 && n < NTR; k++) { const a = rnd() * Math.PI * 2, r = 15 + rnd() * 75, x = Math.sin(a) * r, z = Math.cos(a) * r;
+      if (x < -4 && x > -16 && Math.abs(z - 1.5) < 6) continue; if (Math.abs(x) < 6 && z > 10 && z < 48) continue;
+      const h = 3 + rnd() * 4.5, w = h * (.28 + rnd() * .1), y = SH + hillH(x, z) - .2; Qy.setFromAxisAngle(V(0, 1, 0), rnd() * 6);
+      TM.compose(S5.set(x, y + h * .62, ZS + z), Qy, V(w, h * .9, w)); cone.setMatrixAt(n, TM); TM.compose(S5.set(x, y + h * .12, ZS + z), Qy, V(1, h * .3, 1)); trunk.setMatrixAt(n, TM); n++; }
+    cone.count = trunk.count = n; scene.add(cone, trunk); }
+  // a village down in the valley: a few warm windows
+  { const VN = 46, vp = new Float32Array(VN * 3); for (let i = 0; i < VN; i++) { const a = -.5 + rnd() * .9, r = 52 + rnd() * 22, x = Math.sin(a) * r, z = Math.cos(a) * r; vp.set([x, SH + hillH(x, z) + .4 + rnd() * 1.2, ZS + z], i * 3); }
+    const vg = new THREE.BufferGeometry(); vg.setAttribute('position', new THREE.BufferAttribute(vp, 3));
+    P.village = new THREE.Points(vg, new THREE.PointsMaterial({ color: 0xffc070, size: .5, sizeAttenuation: true, transparent: true, opacity: .9, fog: false, depthWrite: false, blending: THREE.AdditiveBlending })); scene.add(P.village); }
+  // rain: a box of it that travels with the camera while you are up top
+  const N = mobile ? 420 : 1100, rp = new Float32Array(N * 6);
+  for (let i = 0; i < N; i++) { const x = (rnd() - .5) * 20, y = rnd() * 14, z = (rnd() - .5) * 20; rp.set([x, y, z, x - .01, y - .2, z], i * 6); }
   const rainG = new THREE.BufferGeometry(); rainG.setAttribute('position', new THREE.BufferAttribute(rp, 3));
-  P.rain = new THREE.LineSegments(rainG, new THREE.LineBasicMaterial({ color: 0x9aa6c8, transparent: true, opacity: .32, fog: false })); P.rain.position.y = SH; scene.add(P.rain);
+  P.rain = new THREE.LineSegments(rainG, new THREE.LineBasicMaterial({ color: 0x9aa6c8, transparent: true, opacity: .32, fog: false })); P.rain.position.set(0, SH, ZS); P.rain.frustumCulled = false; scene.add(P.rain);
   P.rainT = tex(8, 8, (g) => { g.fillStyle = '#fff'; g.fillRect(0, 0, 8, 8); });
 
   // ---- the tunnel
@@ -147,14 +175,22 @@ export function build(scene, mobile) {
   };
   const cut = 1.2;
   mesh(shaftGeo(-.6, 2.9, Math.PI + cut, Math.PI * 2 - cut * 2, 8), rockS, 0, (-.6 + 2.9) / 2, ZS, scene, false);
-  mesh(shaftGeo(2.55, SH + .06, 0, Math.PI * 2, 96), rockS, 0, (2.55 + SH + .06) / 2, ZS, scene, false);
+  // three levels on the way down: each one a lit gallery that opens off the shaft
+  const LV = [{ y: SH - 8.6, side: 1, n: 1, name: 'SHALLOW', sub: 'level 1  ·  0+ blocks' }, { y: SH - 16.6, side: -1, n: 2, name: 'DEEP', sub: 'level 2  ·  25+ blocks' }, { y: SH - 24.4, side: 1, n: 3, name: 'DEEPER', sub: 'level 3  ·  250+ blocks' }];
+  P.levels = LV; const GAP = .62, OPEN_H = 2.55;
+  const inGap = (a, y, pad = .12) => LV.some(l => { const c = l.side > 0 ? Math.PI / 2 : -Math.PI / 2; let d = a - c; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d) < GAP + pad && y > l.y - .3 && y < l.y + OPEN_H + .3; });
+  { const cuts = [2.55]; LV.slice().sort((a, b) => a.y - b.y).forEach(l => cuts.push(l.y, l.y + OPEN_H)); cuts.push(SH + .06);
+    for (let i = 0; i < cuts.length - 1; i++) { const y0 = cuts[i], y1 = cuts[i + 1]; if (y1 - y0 < .01) continue;
+      const l = LV.find(q => Math.abs(q.y - y0) < 1e-6), segY = Math.max(2, Math.round((y1 - y0) * 3.4));
+      const g = l ? shaftGeo(y0, y1, (l.side > 0 ? Math.PI / 2 : -Math.PI / 2) + GAP, Math.PI * 2 - GAP * 2, segY) : shaftGeo(y0, y1, 0, Math.PI * 2, segY);
+      mesh(g, rockS, 0, (y0 + y1) / 2, ZS, scene, false); } }
   const sfloor = mesh(new THREE.CircleGeometry(SR + .3, 32), std({ map: dirt, roughness: .98, color: 0x9a8a7a }), 0, .003, ZS); sfloor.rotation.x = -Math.PI / 2;
   // timber sets: a square of beams every 2 m, and two guide rails the cage runs on
   const setY = []; for (let y = 3.1; y < SH - .5; y += 2.6) setY.push(y);
   const beamS = new THREE.InstancedMesh(new THREE.BoxGeometry(2.95, .12, .13), tw, setY.length * 4); let bi = 0;
-  setY.forEach(y => { for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; M.makeRotationY(a).setPosition(Math.sin(a) * 1.36, y, ZS + Math.cos(a) * 1.36); beamS.setMatrixAt(bi++, M); } });
-  beamS.castShadow = false; beamS.receiveShadow = !mobile; scene.add(beamS);
-  for (const sx of [-.7, .7]) mesh(new THREE.BoxGeometry(.1, SH, .16), tw, sx, SH / 2, ZS, scene, false);
+  setY.forEach(y => { for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; if (inGap(a, y, .3)) continue; M.makeRotationY(a).setPosition(Math.sin(a) * 1.36, y, ZS + Math.cos(a) * 1.36); beamS.setMatrixAt(bi++, M); } });
+  beamS.count = bi; beamS.castShadow = false; beamS.receiveShadow = !mobile; scene.add(beamS);
+  for (const [gx, gz] of [[-.66, -.66], [.66, .66]]) { const gr = mesh(new THREE.BoxGeometry(.1, SH, .16), tw, gx, SH / 2, ZS + gz, scene, false); gr.rotation.y = Math.PI / 4; }
   // lanterns down the shaft: they clunk on as the cage comes down to them
   const lantern = (x, y, z, c, withLight, flick) => {
     const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
@@ -173,7 +209,7 @@ export function build(scene, mobile) {
   // gold in the shaft walls
   const goldS = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), std({ color: 0xffb040, emissive: 0xff8a10, emissiveIntensity: 1.2, metalness: .5, roughness: .35 }), 300); let gs2 = 0;
   { const Q2 = new THREE.Quaternion(), E2 = new THREE.Euler(), S4 = new THREE.Vector3();
-    for (let c = 0; c < 46 && gs2 < 300; c++) { const a = rnd() * Math.PI * 2, y = 3 + rnd() * (SH - 4), r = wallR(a, y) * .97;
+    for (let c = 0; c < 64 && gs2 < 300; c++) { const a = rnd() * Math.PI * 2, y = 3 + rnd() * (SH - 4), r = wallR(a, y) * .97; if (inGap(a, y, .25)) continue;
       for (let k = 0, cnt = 4 + (rnd() * 8 | 0); k < cnt && gs2 < 300; k++) { const rr = .008 + rnd() * .018, da = (rnd() - .5) * .12, dy = (rnd() - .5) * .22; E2.set(rnd() * 3, rnd() * 3, rnd() * 3); Q2.setFromEuler(E2);
         M.compose(S4.set(Math.sin(a + da) * r, y + dy, ZS + Math.cos(a + da) * r), Q2, new THREE.Vector3(rr, rr * (1 + rnd()), rr)); goldS.setMatrixAt(gs2++, M); } } }
   goldS.count = gs2; scene.add(goldS);
@@ -223,6 +259,9 @@ export function build(scene, mobile) {
   const winM = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.35, .55), toneMapped: false });
   mesh(new THREE.PlaneGeometry(.7, .5), winM, house.x + 1.61, SH + 1.5, house.z - .4, scene, false).rotation.y = Math.PI / 2;
   mesh(new THREE.PlaneGeometry(.7, .5), winM, house.x + .5, SH + 1.5, house.z + 1.51, scene, false);
+  // a red beacon on top of the headframe, blinking over the hill
+  P.beacon = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowT, color: 0xff3a2a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); P.beacon.scale.set(1.6, 1.6, 1.6); P.beacon.position.set(-.7, HT + 1.75, ZS); scene.add(P.beacon);
+  mesh(new THREE.SphereGeometry(.07, 10, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, .3, .2), toneMapped: false }), -.7, HT + 1.68, ZS, scene, false);
   // the lamp on the headframe and its light
   P.surfLantern = lantern(1.15, SH + 2.5, ZS + 1.45, A1.clone(), false, true); P.surfLantern.want = 1;
   P.surfLight = new THREE.PointLight(0xffb060, 0, 20, 1.2); P.surfLight.position.set(1.4, SH + 2.4, ZS + 1.9); scene.add(P.surfLight);
@@ -269,6 +308,61 @@ export function build(scene, mobile) {
   [[-.85, 4.3, 1, .3], [-.9, 1.2, .9, -.2], [-.82, -2.6, 1.1, .5], [.95, 2.6, .8, .1]].forEach(([x, z, s, ry]) => { crate(x, z, s, ry); const m = makeMiner(scene, s * 1.05); m.position.set(x, .44 * s + .1 * s, z); m.rotation.y = Math.PI * .92; P.buds.push(m); });
   [[RX - .15, -1.25, .9], [-1.0, -5.2, 1.4], [1.05, -5.6, 1.25]].forEach(([x, z, s], i) => { const m = makeMiner(scene, s); m.position.set(x, i === 0 ? .78 : .1 * s, z); m.rotation.y = Math.PI * .92; P.buds.push(m); });
 
+  // ---- the levels: a gallery off the shaft at each one, with a sign you can read from the cage, a cart of ore, gold in the walls and miners who watch you pass
+  { const RTr = RT.clone(), RBr = RB.clone(); RTr.repeat.set(2, 1.3); RBr.repeat.set(2, 1.3); RTr.needsUpdate = RBr.needsUpdate = true;
+    const roomRock = std({ map: RTr, bumpMap: RBr, bumpScale: 2.6, roughness: .95, color: 0x857563 });
+    const plate = (w, h, sw, sh, seed) => { const g = new THREE.PlaneGeometry(w, h, sw, sh), p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, (fbm(p.getX(i) * .8 + seed, p.getY(i) * .8 + seed * .3, seed) - .5) * .32); g.computeVertexNormals(); return g; };
+    const veinG = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), std({ color: 0xffb040, emissive: 0xff8a10, emissiveIntensity: 1.6, metalness: .5, roughness: .35 }), 260); let vg = 0;
+    const W = 2.4, Z0 = 1.5, Z1 = 8.4, D = Z1 - Z0, ZM = (Z0 + Z1) / 2, Hh = OPEN_H;
+    const lvSign = (l) => tex(1024, 320, (g, w, h) => {
+      g.fillStyle = '#20160d'; g.fillRect(0, 0, w, h); for (let i = 0; i < 60; i++) { g.strokeStyle = `rgba(0,0,0,${.15 + rnd() * .25})`; g.lineWidth = 1 + rnd() * 3; const y = rnd() * h; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y + (rnd() - .5) * 6); g.stroke(); }
+      g.fillStyle = '#0e0905'; g.fillRect(0, 0, w, 12); g.fillRect(0, h - 12, w, 12);
+      g.textAlign = 'center'; g.font = '132px PX, monospace'; g.fillStyle = '#ffb347'; g.shadowColor = 'rgba(255,170,70,.65)'; g.shadowBlur = 26; g.fillText(l.name, w / 2, 160);
+      g.shadowBlur = 0; g.font = '58px VT, monospace'; g.fillStyle = '#f2e6cc'; g.fillText(l.sub, w / 2, 250); });
+    LV.forEach((l, li) => {
+      const rg = new THREE.Group(); rg.position.set(0, l.y, ZS); rg.rotation.y = l.side > 0 ? Math.PI / 2 : -Math.PI / 2; scene.add(rg); rg.updateMatrixWorld(true);
+      const fl = mesh(plate(W, D, 8, 18, 3 + li), roomRock, 0, .01, ZM, rg, false); fl.rotation.x = -Math.PI / 2;
+      const ce = mesh(plate(W, D, 8, 18, 7 + li), roomRock, 0, Hh, ZM, rg, false); ce.rotation.x = Math.PI / 2;
+      const lw = mesh(plate(D, Hh, 18, 8, 11 + li), roomRock, -W / 2, Hh / 2, ZM, rg, false); lw.rotation.y = Math.PI / 2;
+      const rw = mesh(plate(D, Hh, 18, 8, 13 + li), roomRock, W / 2, Hh / 2, ZM, rg, false); rw.rotation.y = -Math.PI / 2;
+      const bw = mesh(plate(W, Hh, 8, 8, 17 + li), roomRock, 0, Hh / 2, Z1, rg, false); bw.rotation.y = Math.PI;
+      for (const zz of [1.62, 3.95, 6.3]) { for (const sx of [-1.08, 1.08]) mesh(new THREE.CylinderGeometry(.075, .085, Hh, 10), tw, sx, Hh / 2, zz, rg, false); mesh(new THREE.BoxGeometry(2.45, .17, .2), tw, 0, Hh - .09, zz, rg, false); }
+      for (const sx of [-.3, .3]) mesh(new THREE.BoxGeometry(.04, .045, D - .1), steel, sx, .06, ZM, rg, false);
+      for (let zz = Z0 + .2; zz < Z1 - .1; zz += .46) mesh(new THREE.BoxGeometry(.9, .045, .12), wood, 0, .03, zz, rg, false);
+      // the sign on the cap beam, facing the shaft
+      const stx = lvSign(l), sb = mesh(new THREE.PlaneGeometry(1.42, .44), new THREE.MeshStandardMaterial({ map: stx, roughness: .7, emissive: 0xffffff, emissiveMap: stx, emissiveIntensity: .45 }), 0, 1.94, 1.5, rg, false); sb.rotation.y = Math.PI;
+      for (const sx of [-.55, .55]) mesh(new THREE.CylinderGeometry(.008, .008, .25, 4), iron, sx, 2.27, 1.52, rg, false);
+      // a cart of glowing ore, a crate, miners
+      const cart = new THREE.Group(); cart.position.set(0, 0, 4.9); rg.add(cart);
+      const body = new THREE.BoxGeometry(.66, .38, .9); const bp = body.attributes.position; for (let i = 0; i < bp.count; i++) if (bp.getY(i) > 0) { bp.setX(i, bp.getX(i) * 1.18); bp.setZ(i, bp.getZ(i) * 1.1); }
+      body.computeVertexNormals(); mesh(body, std({ color: 0x2c2f31, metalness: .7, roughness: .45 }), 0, .4, 0, cart, false);
+      const oreM = std({ color: 0xffc35a, emissive: 0xff8f1f, emissiveIntensity: 2.6, metalness: .6, roughness: .35 });
+      for (let i = 0; i < 26; i++) { const r = .045 + rnd() * .06, m2 = mesh(new THREE.IcosahedronGeometry(r, 0), rnd() < .55 ? oreM : std({ color: 0x3a332c, roughness: .9 }), (rnd() - .5) * .66, .6 + rnd() * .12, (rnd() - .5) * .84, cart, false); m2.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3); }
+      const cr = mesh(new THREE.BoxGeometry(.5, .44, .5), crateM, .78, .22, 6.0, rg, false); cr.rotation.y = .3;
+      const m1 = makeMiner(rg, 1.15); m1.position.set(-.62, .12, 3.1); m1.rotation.y = Math.PI; P.buds.push(m1);
+      const m2 = makeMiner(rg, .95); m2.position.set(.78, .44 + .1, 6.0); m2.rotation.y = Math.PI; P.buds.push(m2);
+      if (li === 1) { const m3 = makeMiner(rg, 1.0); m3.position.set(.5, .12, 2.6); m3.rotation.y = Math.PI; P.buds.push(m3); }
+      // gold in the gallery walls
+      const Q3 = new THREE.Quaternion(), E3 = new THREE.Euler(), S6 = new THREE.Vector3(), lm = new THREE.Matrix4();
+      for (let c = 0; c < 14; c++) { const onLeft = rnd() < .5, zz = Z0 + .4 + rnd() * (D - .7), yy = .4 + rnd() * 1.9, back = c > 11;
+        for (let k = 0, cnt = 4 + (rnd() * 7 | 0); k < cnt && vg < 260; k++) { const rr = .01 + rnd() * .022; E3.set(rnd() * 3, rnd() * 3, rnd() * 3); Q3.setFromEuler(E3);
+          const px = back ? (rnd() - .5) * 1.8 : (onLeft ? -W / 2 + .06 : W / 2 - .06), pz = back ? Z1 - .08 : zz + (rnd() - .5) * .3;
+          S6.set(px, yy + (rnd() - .5) * .25, pz).applyMatrix4(rg.matrixWorld); lm.compose(S6, Q3, new THREE.Vector3(rr, rr * (1 + rnd()), rr)); veinG.setMatrixAt(vg++, lm); } }
+      // a lantern on the second set; it clunks on as the cage comes down to the level
+      const lp = new THREE.Vector3(.62, Hh - .45, 3.8).applyMatrix4(rg.matrixWorld);
+      P.bars.push(Object.assign(lantern(lp.x, lp.y, lp.z, A2.clone(), false, false), { shaft: true }));
+      l.light = new THREE.Vector3(0, 1.9, 4.3).applyMatrix4(rg.matrixWorld); l.look = new THREE.Vector3(0, 1.2, 4.6).applyMatrix4(rg.matrixWorld);
+      const lp2 = new THREE.Vector3(-.62, Hh - .45, 6.15).applyMatrix4(rg.matrixWorld); P.bars.push(Object.assign(lantern(lp2.x, lp2.y, lp2.z, A1.clone(), false, li === 2), { shaft: true }));
+    });
+    veinG.count = vg; scene.add(veinG);
+    // one warm light rides down with you from level to level
+    P.levelLight = new THREE.PointLight(0xffb060, 0, 11, 1.3); scene.add(P.levelLight);
+    // bedrock: the sign over the tunnel at the bottom of the shaft
+    const bt = tex(1024, 224, (g, w, h) => { g.fillStyle = '#20160d'; g.fillRect(0, 0, w, h); g.fillStyle = '#0e0905'; g.fillRect(0, 0, w, 10); g.fillRect(0, h - 10, w, 10);
+      g.textAlign = 'center'; g.font = '112px PX, monospace'; g.fillStyle = '#ffd27a'; g.shadowColor = 'rgba(255,200,110,.7)'; g.shadowBlur = 26; g.fillText('BEDROCK', w / 2, 120); g.shadowBlur = 0; g.font = '50px VT, monospace'; g.fillStyle = '#f2e6cc'; g.fillText('level 4  ·  2,500+ blocks  ·  the terminal is this way', w / 2, 190); });
+    mesh(new THREE.PlaneGeometry(1.5, .33), std({ map: bt, roughness: .7, emissive: 0xffffff, emissiveMap: bt, emissiveIntensity: .35 }), 0, 1.98, Z_IN - 2.25, scene, false);
+    for (const sx of [-.6, .6]) mesh(new THREE.CylinderGeometry(.008, .008, .2, 4), iron, sx, 2.24, Z_IN - 2.25, scene, false);
+  }
   // ---- eyes in the cracks: little ones, mostly hidden in the walls. a few watch the mouth already; the rest turn as you pass.
   const tinyBody = new THREE.SphereGeometry(.12, 14, 10), tinyHat = new THREE.SphereGeometry(.1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
   const tinySkin = std({ color: 0x141614, roughness: .5 }), tinyHatM = std({ color: 0xb98a2c, roughness: .5 });
@@ -281,7 +375,7 @@ export function build(scene, mobile) {
   const tEyes = [-1, 1].map(sx => ({ p: V(sx * .04, .13, .113), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, sx * .3, 0)), sx }));
   P.tiny = [];
   for (let i = TN0; i < TN; i++) {
-    const a = rnd() * Math.PI * 2, y = 3.4 + rnd() * (SH - 5), r = wallR(a, y) * .9;
+    let a = rnd() * Math.PI * 2, y = 3.4 + rnd() * (SH - 5); for (let t2 = 0; t2 < 8 && inGap(a, y, .3); t2++) { a = rnd() * Math.PI * 2; y = 3.4 + rnd() * (SH - 5); } const r = wallR(a, y) * .9;
     const o = new THREE.Object3D(); o.position.set(Math.sin(a) * r, y, ZS + Math.cos(a) * r); o.scale.setScalar(.3 + rnd() * .28); o.rotation.y = a + Math.PI + (rnd() - .5) * .5;
     o.userData = { lag: .02 + rnd() * .05, nb: rnd() * 6000, wake: 99, blink: 1, bob: rnd() * 6, shaft: true };
     P.tiny[i] = o;

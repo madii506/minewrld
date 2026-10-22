@@ -1,12 +1,12 @@
 // Mine OS: the mine at night, the dive into the foreman's terminal, a short boot, then an amber desktop where every
 // window works and the miners live on the taskbar. The windows, the terminal, the rig and the pets all read the same live engine.
-import { createSound } from './sound.js?v=1';
-import * as WAL from './wallet.js?v=1';
-import { ICONS, SPR, avatarURL, hueOf, tinted, walkFrames } from './sprites.js?v=1';
-import { installApps } from './mwapps.js?v=1';
-import { installTerm } from './term.js?v=1';
-import { installPets } from './pets.js?v=1';
-import * as FX from './fx.js?v=1';
+import { createSound } from './sound.js?v=2';
+import * as WAL from './wallet.js?v=2';
+import { ICONS, SPR, avatarURL, hueOf, tinted, walkFrames } from './sprites.js?v=2';
+import { installApps } from './mwapps.js?v=2';
+import { installTerm } from './term.js?v=2';
+import { installPets } from './pets.js?v=2';
+import * as FX from './fx.js?v=2';
 
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -72,7 +72,7 @@ async function boot() {
   try {
     const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
     if (!gl) throw new Error('no webgl');
-    const { run } = await import('./mintro.js?v=1');
+    const { run } = await import('./mintro.js?v=2');
     // the music button: no words, just bars that move with the music. off shows a slash.
     const sb = $('#isound');
     if (sb) {
@@ -105,9 +105,16 @@ async function desktop(cmd, instant) {
   const qs = new URLSearchParams(location.search);
   const target = qs.get('mine');
   if (target) X.openMine(target);
-  const app = { launch: 'launch', veins: 'veins', mines: 'veins', mine: 'rig', rig: 'rig', chain: 'chain', blocks: 'chain', ledger: 'ledger', terminal: 'term', term: 'term', docs: 'readme', readme: 'readme', stats: 'stats', dash: 'stats', paint: 'paint' }[cmd || qs.get('app') || ''];
+  const app = { launch: 'launch', veins: 'veins', mines: 'veins', mine: 'rig', rig: 'rig', chain: 'chain', blocks: 'chain', ledger: 'ledger', terminal: 'term', term: 'term', docs: 'readme', readme: 'readme', stats: 'stats', dash: 'stats', paint: 'paint', mountain: 'mountain', map: 'mountain' }[cmd || qs.get('app') || ''];
   if (app) WM.open(app);
-  else if (!target) { if (ls.get('mw:nowelcome') !== '1') WM.open('welcome'); if (!MOBILE) setTimeout(() => WM.open('veins'), 350); }
+  else if (!target) { if (!MOBILE) WM.open('mountain'); if (ls.get('mw:nowelcome') !== '1') setTimeout(() => { WM.open('welcome'); if (!MOBILE) sideBySide(); }, MOBILE ? 0 : 380); }
+}
+// first visit: the welcome on the left, the live mountain beside it, not under it, when the screen has the room
+function sideBySide() {
+  const a = WM.wins.welcome, b = WM.wins.mountain, area = $('#wins'); if (!a || !b || !area) return;
+  const right = a.offsetLeft + a.offsetWidth + 12, room = area.offsetWidth - right - 14;
+  if (room < 560) return;
+  b.style.setProperty('--ww', Math.min(940, room) + 'px'); b.style.setProperty('--wh', Math.min(600, area.offsetHeight - 40) + 'px'); b.style.left = right + 'px'; b.style.top = '22px';
 }
 
 // ================================================================ window manager
@@ -136,7 +143,7 @@ const WM = {
     const ww = Math.min(w.offsetWidth || def.w || 560, area.width - 16), wh = Math.min(w.offsetHeight || def.h || 420, area.height - 16);
     let x, y;
     if (def.at === 'right') { x = area.width - ww - 18; y = 18; }
-    else if (def.at === 'left') { x = 130; y = 24; }
+    else if (def.at === 'left') { x = Math.min(200, Math.max(12, area.width - ww - 12)); y = 22; }
     else { x = Math.max(120, (area.width - ww) / 2 + (n % 6) * 28 - 60); y = Math.max(12, (area.height - wh) / 2 + (n % 6) * 24 - 40); }
     x = Math.min(x, area.width - ww - 8); y = Math.min(y, area.height - wh - 8);
     w.style.left = Math.max(4, x) + 'px'; w.style.top = Math.max(4, y) + 'px';
@@ -246,7 +253,7 @@ X.WM = WM; X.open = (app, arg, from) => WM.open(app, arg, from);
 window.__mwos = X; window.__budos = X;
 
 // ================================================================ desktop: icons, start menu, tray, wallpaper
-const DESK_ICONS = [['rig', 'rig.exe'], ['launch', 'launch.exe'], ['veins', 'veins'], ['chain', 'chain.exe'], ['stats', 'stats.exe'], ['ledger', 'ledger.db'], ['term', 'miner.sh'], ['readme', 'readme.txt'], ['paint', 'paint.exe'], ['display', 'display'], ['bin', 'recycle bin']];
+const DESK_ICONS = [['rig', 'rig.exe'], ['mountain', 'mountain.exe'], ['launch', 'launch.exe'], ['veins', 'veins'], ['chain', 'chain.exe'], ['stats', 'stats.exe'], ['ledger', 'ledger.db'], ['term', 'miner.sh'], ['readme', 'readme.txt'], ['paint', 'paint.exe'], ['display', 'display'], ['bin', 'recycle bin']];
 function closeMenus() { $('#startm').hidden = true; $('#start').classList.remove('on'); const wm = $('#walletm'); if (wm) wm.hidden = true; }
 function renderIcons() {
   const box = $('#icons'); box.innerHTML = '';
@@ -262,7 +269,7 @@ function renderIcons() {
 }
 function renderStart() {
   const m = $('#startm');
-  const items = [['rig', 'mine a coin', 'rig.exe'], ['launch', 'launch a coin', 'launch.exe'], ['veins', 'veins', 'every mine on the mountain'], ['chain', 'chain.exe', 'every block, checkable'], ['stats', 'stats.exe', 'the mountain in numbers'], ['ledger', 'ledger', 'every block, every tx'], ['term', 'terminal', 'miner.sh'], ['-'],
+  const items = [['rig', 'mine a coin', 'rig.exe'], ['launch', 'launch a coin', 'launch.exe'], ['mountain', 'mountain.exe', 'every mine, live'], ['veins', 'veins', 'every mine, as a list'], ['chain', 'chain.exe', 'every block, checkable'], ['stats', 'stats.exe', 'the mountain in numbers'], ['ledger', 'ledger', 'every block, every tx'], ['term', 'terminal', 'miner.sh'], ['-'],
     ['paint', 'paint.exe', 'draw a coin'], ['readme', 'readme.txt', 'how it works'], ['display', 'display', 'crt, sound, miners'], ['-'], ['shutdown', 'shut down…', 'back up the tunnel']];
   m.innerHTML = `<div class="sm-side"><span>Mine OS</span></div><div class="sm-list">${items.map(([a, t, s], i) => a === '-' ? '<hr>' : `<button type="button" data-app="${a}" style="--i:${i}"><img src="${a === 'shutdown' ? ICONS.x : ICONS[(APPS[a] || {}).icon] || ICONS.folder}" alt=""><b>${esc(t)}</b><small>${esc(s)}</small></button>`).join('')}</div>`;
   $$('button', m).forEach(b => b.onclick = () => { closeMenus(); if (b.dataset.app === 'shutdown') return shutdown(); WM.open(b.dataset.app); });
@@ -324,7 +331,7 @@ function killRig() { try { X.RIG.on = false; (X.RIG.workers || []).forEach(w => 
 // ---------------------------------------------------------------- wallpaper: the mine after hours. lanterns on the beams, gold in the rock, dust in the light.
 // Everything that doesn't move is drawn once, into a cache.
 function wallpaper() {
-  const c = $('#wall'), g = c.getContext('2d'); let W = 0, H = 0, D = 1, mx = .5, my = .5, sx = .5, sy = .5, last = 0, bar = 42;
+  const c = $('#wall'), g = c.getContext('2d'); let W = 0, H = 0, D = 1, mx = .5, my = .5, sx = .5, sy = .5, last = 0, bar = 42, top = 0;
   const dust = Array.from({ length: MOBILE ? 26 : 70 }, () => ({ x: Math.random(), y: Math.random(), z: .2 + Math.random() * .8, v: .003 + Math.random() * .01, p: Math.random() * 6 }));
   const LAMPS = [[.14, .9], [.38, 1.1], [.63, 1], [.88, .85]];
   const mk = (w, h) => { const k = document.createElement('canvas'); k.width = Math.max(1, Math.round(w)); k.height = Math.max(1, Math.round(h)); return k; };
@@ -339,17 +346,17 @@ function wallpaper() {
     for (let v = 0; v < 7; v++) { let x = rnd() * W, y = rnd() * floor, a = rnd() * Math.PI * 2; for (let i = 0; i < 160; i++) { a += (rnd() - .5) * .5; x += Math.cos(a) * 3; y += Math.sin(a) * 2; if (x < 0 || x > W || y < 0 || y > floor) break; const hi = rnd() < .14; q.fillStyle = hi ? 'rgba(255,226,150,.30)' : 'rgba(242,178,62,.13)'; q.fillRect(Math.round(x), Math.round(y), 2, 2); if (hi && rnd() < .35) glints.push({ x, y, p: rnd() * 6 }); } }
     for (const [fx, wd] of LAMPS) {
       const x = fx * W, sg = q.createLinearGradient(0, 0, 0, floor); sg.addColorStop(0, 'rgba(255,190,110,.07)'); sg.addColorStop(.6, 'rgba(255,170,80,.022)'); sg.addColorStop(1, 'rgba(255,170,80,0)');
-      q.fillStyle = sg; q.beginPath(); q.moveTo(x - 30 * wd, 14); q.lineTo(x + 30 * wd, 14); q.lineTo(x + 200 * wd, floor); q.lineTo(x - 200 * wd, floor); q.closePath(); q.fill();
-      q.fillStyle = 'rgba(60,40,24,.9)'; q.fillRect(x - 1, 0, 2, 10); q.fillStyle = 'rgba(255,214,140,.85)'; q.shadowColor = '#ffb347'; q.shadowBlur = 16; q.fillRect(x - 4, 10, 8, 8); q.shadowBlur = 0;
+      q.fillStyle = sg; q.beginPath(); q.moveTo(x - 30 * wd, top + 14); q.lineTo(x + 30 * wd, top + 14); q.lineTo(x + 200 * wd, floor); q.lineTo(x - 200 * wd, floor); q.closePath(); q.fill();
+      q.fillStyle = 'rgba(60,40,24,.9)'; q.fillRect(x - 1, top, 2, 10); q.fillStyle = 'rgba(255,214,140,.85)'; q.shadowColor = '#ffb347'; q.shadowBlur = 16; q.fillRect(x - 4, top + 10, 8, 8); q.shadowBlur = 0;
     }
     // a beam along the ceiling
-    q.fillStyle = 'rgba(42,28,16,.9)'; q.fillRect(0, 0, W, 4);
+    q.fillStyle = 'rgba(42,28,16,.9)'; q.fillRect(0, top, W, 4);
     if (X.SET.grid) { q.strokeStyle = 'rgba(255,179,71,.025)'; q.lineWidth = 1; q.beginPath(); for (let x = 0; x < W; x += 32) { q.moveTo(x + .5, 0); q.lineTo(x + .5, H); } for (let y = 0; y < H; y += 32) { q.moveTo(0, y + .5); q.lineTo(W, y + .5); } q.stroke(); }
     const fg = q.createLinearGradient(0, floor - 90, 0, floor); fg.addColorStop(0, 'rgba(255,179,71,0)'); fg.addColorStop(1, 'rgba(255,179,71,.06)'); q.fillStyle = fg; q.fillRect(0, floor - 90, W, 90);
     // rails along the floor
     q.fillStyle = 'rgba(120,96,70,.35)'; q.fillRect(0, floor - 14, W, 2); q.fillRect(0, floor - 6, W, 2); q.fillStyle = 'rgba(60,40,24,.5)'; for (let x = 6; x < W; x += 22) q.fillRect(x, floor - 16, 6, 12);
   }
-  const fit = () => { D = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = Math.round(W * D); c.height = Math.round(H * D); g.setTransform(D, 0, 0, D, 0, 0); bar = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bar')) || 42; bg = null; };
+  const fit = () => { D = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = Math.round(W * D); c.height = Math.round(H * D); g.setTransform(D, 0, 0, D, 0, 0); const cs = getComputedStyle(document.documentElement); bar = parseInt(cs.getPropertyValue('--bar')) || 42; top = parseInt(cs.getPropertyValue('--tick')) || 0; bg = null; };
   fit(); addEventListener('resize', fit); X.on('settings', () => { bg = null; });
   addEventListener('pointermove', e => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight; }, { passive: true });
   function frame(now) {
@@ -361,7 +368,7 @@ function wallpaper() {
     const floor = H - bar;
     // one lantern gutters now and then
     if (Math.random() < dt / 9) flick = now;
-    if (now - flick < 260 && (now / 40 | 0) % 2) { const x = LAMPS[2][0] * W, wd = LAMPS[2][1]; g.fillStyle = 'rgba(3,2,1,.55)'; g.beginPath(); g.moveTo(x - 30 * wd, 14); g.lineTo(x + 30 * wd, 14); g.lineTo(x + 200 * wd, floor); g.lineTo(x - 200 * wd, floor); g.closePath(); g.fill(); }
+    if (now - flick < 260 && (now / 40 | 0) % 2) { const x = LAMPS[2][0] * W, wd = LAMPS[2][1]; g.fillStyle = 'rgba(3,2,1,.55)'; g.beginPath(); g.moveTo(x - 30 * wd, top + 14); g.lineTo(x + 30 * wd, top + 14); g.lineTo(x + 200 * wd, floor); g.lineTo(x - 200 * wd, floor); g.closePath(); g.fill(); }
     for (const p of glints) { const a = Math.max(0, Math.sin(now / 900 + p.p * 3)) ** 8; if (a > .02) { g.fillStyle = `rgba(255,240,200,${(a * .8).toFixed(2)})`; g.fillRect(Math.round(p.x) - 1, Math.round(p.y), 4, 1); g.fillRect(Math.round(p.x) + 1, Math.round(p.y) - 1, 1, 4); } }
     for (const p of dust) {
       p.y -= p.v * dt * (1 + p.z) * .6; p.x += Math.sin(now / 1900 + p.p) * .0003; if (p.y < -.02) { p.y = 1.02; p.x = Math.random(); }
@@ -404,8 +411,12 @@ async function pollFeed() {
       }
     }
     if (items.length) pollMines();
+    if (items.some(i => i.kind === 'block')) setTimeout(pollBlocks, 400);
   } catch {}
 }
+// the newest blocks across every chain, for the ticker and mountain.exe
+X.BLOCKS = [];
+async function pollBlocks() { try { const j = await api('blocks', { params: { all: 1, limit: 12 } }); X.BLOCKS = j.blocks || []; X.emit('blocks', X.BLOCKS); } catch {} }
 X.refresh = () => { pollMines(); pollFeed(); };
 X.mineBy = key => { const k = String(key || '').toLowerCase().replace(/^\$/, ''); return X.MINES.find(m => m.mint === key || m.id === key || m.symbol.toLowerCase() === k || m.name.toLowerCase() === k); };
 X.budBy = key => { const m = X.mineBy(key); return m ? X.BUDS.find(b => b.mint === m.mint) : null; };
@@ -427,13 +438,66 @@ async function initDesk() {
   WAL.onChange(() => { renderWallet(); X.emit('wallet', WAL.current()); });
   wallpaper();
   X.CFG = await api('config').catch(() => null);
-  await pollMines(); await pollFeed();
-  setInterval(pollMines, 15000); setInterval(pollFeed, 6000); setInterval(renderTray, 15000); renderTray();
+  await pollMines(); await pollFeed(); await pollBlocks();
+  setInterval(pollMines, 15000); setInterval(pollFeed, 6000); setInterval(pollBlocks, 45000); setInterval(renderTray, 15000); renderTray();
+  try { ticker(); } catch (e) { console.error(e); }
   setInterval(() => { if (X.RIG && X.RIG.on) renderRig(); }, 1000); X.on('rig', renderRig);
   const rt = $('#rigt'); if (rt) rt.onclick = () => WM.open('rig');
   try { installPets(X); } catch (e) { console.error(e); }
   // the engine runs on a cron; a visit also gives it a nudge, at most once a minute from here
   if (!ss.get('mw:nudge') || Date.now() - +ss.get('mw:nudge') > 60000) { ss.set('mw:nudge', String(Date.now())); fetch('/api/tick').catch(() => {}); }
+}
+// ---------------------------------------------------------------- the ticker: the newest blocks and the fullest pools, rolling along the top
+function ticker() {
+  const box = $('#ticker'); if (!box) return;
+  const vp = $('.tk-vp', box), strip = $('.tk-strip', box), sum = $('.tk-sum', box);
+  const T = { x: 0, last: 0, hold: false, fresh: [], ring: [], ri: 0, gap: 30 };
+  const img = it => it.id ? `<img src="/i/${encodeURIComponent(it.id)}" alt="" loading="lazy">` : '';
+  const html = it => {
+    if (it.k === 'tag') return `<span class="tk-it tag"${it.app ? ` data-app="${it.app}"` : ''}>${it.t}</span>`;
+    const a = `class="tk-it ${it.k}${it.isNew ? ' new' : ''}" data-m="${esc(it.mint)}" type="button"`;
+    if (it.k === 'blk') return `<button ${a}>${img(it)}<span class="s">$${esc(it.sym)}</span><b>block #${esc(it.h)}</b>${it.sol > 0 ? `<span class="g">+${fsol(it.sol)} SOL</span>` : '<span class="m">found</span>'}<i>${esc(ago(it.at))} ago</i></button>`;
+    if (it.k === 'pool') return `<button ${a}>${img(it)}<span class="s">$${esc(it.sym)}</span><span class="m">pool</span><b class="g">${fsol(it.pool)} SOL</b><i>${it.miners ? `${it.miners} mining` : `block #${it.h} waiting`}</i></button>`;
+    if (it.k === 'live') return `<button ${a}>${img(it)}<span class="s">$${esc(it.sym)}</span><b>is live</b><i>a new mine · ${esc(ago(it.at))} ago</i></button>`;
+    return '';
+  };
+  const fromFeed = i => i.kind === 'block' ? { k: 'blk', mint: i.mint, id: i.id, sym: i.symbol, h: i.height, sol: Number(i.sol || 0), at: i.at } : { k: 'live', mint: i.mint, id: i.id, sym: i.symbol, at: i.at };
+  function ring() {
+    const ms = (X.MINES || []).filter(m => m.state === 'live');
+    const blocks = (X.BLOCKS || []).slice(0, 8).map(b => ({ k: 'blk', mint: b.mint, id: b.id, sym: b.symbol, h: b.height, sol: Number(b.reward || 0), at: b.at }));
+    const pools = ms.slice().sort((a, b) => (b.miners - a.miners) || (b.pool - a.pool)).slice(0, 8).map(m => ({ k: 'pool', mint: m.mint, id: m.id, sym: m.symbol, pool: m.pool, miners: m.miners, h: m.height }));
+    const lives = (X.RECENT || []).filter(i => i.kind === 'launch' && / is live\./.test(i.text)).slice(0, 3).map(fromFeed);
+    const out = []; for (let i = 0; i < Math.max(blocks.length, pools.length); i++) { if (blocks[i]) out.push(blocks[i]); if (pools[i]) out.push(pools[i]); }
+    out.push(...lives);
+    if (!out.length) return [{ k: 'tag', t: 'every coin is a mine' }, { k: 'tag', t: 'your browser mines it' }, { k: 'tag', t: 'every block pays SOL' }, { k: 'tag', t: 'no mines open yet · <b>launch the first coin ›</b>', app: 'launch' }];
+    return out;
+  }
+  const next = () => { if (T.fresh.length) return T.fresh.shift(); if (T.ri >= T.ring.length) { T.ring = ring(); T.ri = 0; } return T.ring[T.ri++]; };
+  function fill() { let n = 0; while (strip.offsetWidth - T.x < vp.clientWidth + 260 && n++ < 40) strip.insertAdjacentHTML('beforeend', html(next())); }
+  function totals() { const t = X.TOTALS || {}; sum.innerHTML = `<span><b>${t.mines || 0}</b> mines</span><span><b>${t.miners || 0}</b> mining</span><span><b>${fsol(t.pool || 0)}</b> SOL in pools</span>`; }
+  // a new block shows up just past the right edge, so it rolls in within a second or two
+  X.on('feed', i => {
+    if (!(i.kind === 'block' || (i.kind === 'launch' && / is live\./.test(i.text)))) return;
+    const it = Object.assign(fromFeed(i), { isNew: true }), edge = vp.clientWidth + T.x;
+    const after = [...strip.children].find(c => c.offsetLeft > edge);
+    if (after) after.insertAdjacentHTML('beforebegin', html(it)); else T.fresh.unshift(it);
+  });
+  X.on('mines', () => { totals(); if (T.ring.length === 4 && T.ring[0].k === 'tag' && (X.MINES || []).length) { T.ring = []; T.ri = 0; } });
+  strip.addEventListener('click', e => { const b = e.target.closest('[data-m], [data-app]'); if (!b) return; SOUND.sfx('click'); if (b.dataset.m) X.openMine(b.dataset.m); else WM.open(b.dataset.app); });
+  vp.addEventListener('pointerenter', () => { T.hold = true; }); vp.addEventListener('pointerleave', () => { T.hold = false; });
+  sum.onclick = () => WM.open('stats');
+  T.ring = ring(); totals(); fill();
+  const speed = MOBILE ? 30 : 40;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(.1, (now - (T.last || now)) / 1000); T.last = now;
+    if (document.hidden || T.hold || RM) return;
+    T.x += speed * dt;
+    const f = strip.firstElementChild;
+    if (f) { const w = f.offsetWidth + T.gap; if (T.x > w) { T.x -= w; f.remove(); fill(); } } else fill();
+    strip.style.transform = `translate3d(${(-T.x).toFixed(2)}px,0,0)`;
+  }
+  requestAnimationFrame(frame);
 }
 X.openBud = key => X.openMine(key);
 

@@ -6,7 +6,7 @@ import { EffectComposer } from './vendor/EffectComposer.js';
 import { RenderPass } from './vendor/RenderPass.js';
 import { UnrealBloomPass } from './vendor/UnrealBloomPass.js';
 import { OutputPass } from './vendor/OutputPass.js';
-import { build, V } from './mine.js?v=1';
+import { build, V } from './mine.js?v=2';
 
 const clamp01 = k => Math.max(0, Math.min(1, k));
 const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
@@ -156,7 +156,8 @@ class Terminal {
 // ---------------------------------------------------------------- camera: across the yard to the headframe, into the cage, down the shaft, along the tunnel, to the desk
 function shots(portrait, P) {
   const SH = P.SH, ZS = P.ZS;
-  const A = [[V(-.6, SH + 1.75, ZS + 7.8), V(.4, SH + 2.9, ZS)], [V(-.32, SH + 1.7, ZS + 4.9), V(.1, SH + 2.25, ZS - .2)], [V(-.05, SH + 1.6, ZS + 2.3), V(0, SH + 1.25, ZS - 1.6)], [V(0, SH + 1.5, ZS + .12), V(0, SH + .4, ZS - 2.0)]];
+  const A = [[V(14, SH + 15, ZS + 35), V(0, SH + 3, ZS)], [V(8, SH + 9.5, ZS + 24), V(-.3, SH + 3.6, ZS)], [V(3, SH + 4.8, ZS + 15), V(.2, SH + 3.4, ZS)],
+    [V(-.6, SH + 1.85, ZS + 8.6), V(.4, SH + 2.9, ZS)], [V(-.32, SH + 1.7, ZS + 4.9), V(.1, SH + 2.25, ZS - .2)], [V(-.05, SH + 1.6, ZS + 2.3), V(0, SH + 1.25, ZS - 1.6)], [V(0, SH + 1.5, ZS + .12), V(0, SH + .4, ZS - 2.0)]];
   const end = portrait ? [V(.02, 1.5, -5.15), V(0, 1.22, -7.62)] : [V(.03, 1.5, -5.3), V(0, 1.18, -7.62)];
   const E = [[V(0, 1.5, ZS + .12), V(0, 1.3, ZS - 4)], [V(-.05, 1.5, 6.0), V(.22, 1.12, 1.2)], [V(-.25, 1.5, 3.4), V(.3, 1.02, -1.2)], [V(-.3, 1.48, .6), V(.18, 1.05, -3.6)], [V(-.1, 1.5, -2.6), V(.04, 1.15, -6.2)], end];
   const mk = pts => { const c = new THREE.CatmullRomCurve3(pts, false, 'centripetal'); c.arcLengthDivisions = 2400; return c; };
@@ -165,7 +166,14 @@ function shots(portrait, P) {
   return { A: curve(A), E: curve(E), top, bottom: E[0], end: E[E.length - 1], pitch0: Math.atan2(d.y, Math.hypot(d.x, d.z)) };
 }
 // the film's beats, in seconds: the yard, the cage shuts, the ride down, the landing, the walk to the desk
-const TA = 6.0, TB = 7.4, TC = 18.0, TD = 19.2, TE = 28.8;
+let TA = 6, TB = 7.5, TC = 18, TD = 19.2, TE = 28.8;
+// a speed profile along a path: v(s) shaped by vAt, easing in from rest and out to rest; t ↔ s by integration
+function profile(L, vAt, rampIn, rampOut) {
+  const N = 3000, ss = new Float64Array(N + 1), ts = new Float64Array(N + 1); let t = 0;
+  const vv = x => Math.max(.04, vAt(x) * Math.sqrt(Math.min(1, x / rampIn)) * Math.sqrt(Math.min(1, Math.max(0, L - x) / rampOut)));
+  for (let i = 1; i <= N; i++) { const s0 = L * (i - 1) / N, s1 = L * i / N; t += (s1 - s0) / ((vv(s0) + vv(s1)) / 2); ss[i] = s1; ts[i] = t; }
+  return { T: t, at(tt) { if (tt <= 0) return 0; if (tt >= t) return L; let lo = 0, hi = N; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (ts[m] < tt) lo = m; else hi = m; } return ss[lo] + (ss[hi] - ss[lo]) * (tt - ts[lo]) / (ts[hi] - ts[lo]); } };
+}
 const FOV = p => p ? [62, 50] : [44, 33];
 
 // ---------------------------------------------------------------- run
@@ -189,6 +197,12 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   composer.addPass(new OutputPass());
   const portrait = () => innerWidth / innerHeight < .9;
   let S = shots(portrait(), P);
+  // the film's clock: a drone shot down to the headframe, a walk to the cage, the ride down past each level, the tunnel
+  const sm01 = (a, b, x) => { const k = clamp01((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+  const LA = S.A.pos.getLength(), PA = profile(LA, x => 6.0 + (1.6 - 6.0) * sm01(LA - 15, LA - 7, x), 6.5, 3.2);
+  const nearLv = y => Math.min(1, P.levels.reduce((a, l) => a + Math.exp(-(((y - (l.y + 1.3)) / 2.8) ** 2)), 0));
+  const PC = profile(P.SH, x => 3.9 * (1 - .72 * nearLv(P.SH - x + 1.5)), 3.4, 4.8);
+  TA = PA.T; TB = TA + 1.5; TC = TB + PC.T; TD = TC + 1.25; TE = TD + 9.0;
   function resize() {
     const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
     bloom.resolution.set(w / 3, h / 3); cam.aspect = w / h; cam.fov = FOV(portrait())[1]; cam.updateProjectionMatrix(); S = shots(portrait(), P);
@@ -216,11 +230,12 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   function flush() { const t = NOW - st.t0; while (qi < Q.length && (st.skip || Q[qi].ms <= t)) { const e = Q[qi++]; if (!(st.skip && e.soft)) e.fn(); } }
   ev(1300, () => lightning(1), true);
   ev(3700, () => lightning(.55), true);
+  ev(7300, () => lightning(.8), true);
   ev(TA * 1000 + 100, () => sfx('creak'), true);
   ev(TA * 1000 + 480, () => sfx('clunk', 1), true);
   ev(TB * 1000 - 600, () => sfx('ding'), true);
   ev(TB * 1000 - 50, () => sfx('creak'), true);
-  ev(9800, () => lightning(.3), true);
+  ev(Math.round((TB + 3) * 1000), () => lightning(.3), true);
   ev(TC * 1000, () => sfx('clunk', 1.2), true);
   ev(TC * 1000 + 160, () => sfx('clunk', .5), true);
   ev(TC * 1000 + 520, () => sfx('creak'), true);
@@ -367,7 +382,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   }
 
   let last = performance.now(), started = false;
-  const api = { go: c => dive(c), phase: () => st.phase, skip, seek: (sec, freeze) => { st.t0 = performance.now() - sec * 1000; st.freeze = freeze ? sec : null; }, hold: ms => { st.hold = ms == null ? null : st.diveT + ms; },
+  const api = { go: c => dive(c), phase: () => st.phase, skip, times: () => ({ TA, TB, TC, TD, TE, levels: P.levels.map(l => l.y), pass: P.levels.map(l => { const want = P.SH + 1.5 - (l.y + 1.45); let lo = 0, hi = PC.T; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (PC.at(m) < want) lo = m; else hi = m; } return TB + lo; }) }), seek: (sec, freeze) => { st.t0 = performance.now() - sec * 1000; st.freeze = freeze ? sec : null; }, hold: ms => { st.hold = ms == null ? null : st.diveT + ms; },
     pause: v => { st.paused = !!v; },
     shot: (sec, q = .92) => { if (sec != null) { st.t0 = performance.now() - sec * 1000; st.freeze = sec; } step(performance.now()); return canvas.toDataURL('image/jpeg', q); },
     termShot: (sec, q = .92) => { st.noRender = true; if (sec != null) { st.t0 = performance.now() - sec * 1000; st.freeze = sec; } step(performance.now()); st.noRender = false; return term.c.toDataURL('image/jpeg', q); },
@@ -390,20 +405,21 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     const dt = Math.min(.05, Math.max(.001, (now - last) / 1000)); last = now;
     const t = (NOW - st.t0) / 1000;
     flush();
-    // camera: one smooth take. the yard, the cage, the ride down, the landing, the walk (or a glide to the desk when skipped)
+    // camera: one smooth take. the drone shot, the walk to the cage, the ride down past the levels, the landing, the walk (or a glide to the desk when skipped)
     const [f0, f1] = FOV(portrait()); const film = st.phase === 'film' && !st.blend;
     const tt = st.skip ? TE + 5 : t;
     let pos, look, fov, walking = 0, cageY = P.SH, gateY = 1.9, ride = 0;
     const dirOf = (pitch, yaw) => V(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
     if (tt < TA) {
-      const k = sine(clamp01(tt / TA)); pos = S.A.pos.getPointAt(k); look = S.A.look.getPointAt(k);
-      fov = f0 + 3 + 2 * k; walking = Math.sin(Math.PI * clamp01(tt / TA)) ** 2;
+      const k = PA.at(tt) / LA; pos = S.A.pos.getPointAt(k); look = S.A.look.getPointAt(k);
+      fov = f0 + 9 - 6 * sm01(.45, .8, k); walking = sm01(.72, .84, k) * (1 - sm01(.95, 1, k));
     } else if (tt < TC) {
-      const u = clamp01((tt - TB) / (TC - TB)), e = sine(u);
-      cageY = P.SH * (1 - e); ride = Math.sin(Math.PI * u) ** 2;
+      const sDown = PC.at(tt - TB); cageY = P.SH - sDown; const eye = cageY + 1.5; ride = clamp01(sDown / 3) * clamp01((P.SH - sDown) / 3);
       gateY = 1.9 * (1 - sine(clamp01((tt - TA - .15) / .55)));
-      const pitch = S.pitch0 + (-.1 - S.pitch0) * sine(clamp01(u * 1.05)), yaw = .3 * Math.sin(Math.PI * u) ** 2;
-      pos = V(0, cageY + 1.5, P.ZS + .12); look = pos.clone().add(dirOf(pitch, yaw).multiplyScalar(2));
+      let yaw = 0, nl = 0; for (const l of P.levels) { const n = Math.exp(-(((eye - (l.y + 1.45)) / 3.0) ** 2)); yaw += l.side * 1.35 * n; nl += n; } const wEnd = sm01(0, 2.5, eye - 1.5); yaw *= wEnd; nl = Math.min(1, nl) * wEnd;
+      const p1 = S.pitch0 + (-.14 - S.pitch0) * sine(clamp01(sDown / (P.SH * .3))), p2 = p1 + (-.1 - p1) * sine(clamp01((sDown - (P.SH - 5)) / 5));
+      const pitch = p2 * (1 - nl) + .08 * nl;
+      pos = V(0, eye, P.ZS + .12); look = pos.clone().add(dirOf(pitch, yaw).multiplyScalar(2));
       fov = f0 + 5;
     } else if (tt < TD) {
       const a = tt - TC, k = sine(clamp01(a / (TD - TC)));
@@ -425,9 +441,15 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     P.cageLight.intensity = (mobile ? 22 : 20) * clamp01((tt - TA + .3) / .4) * (1 - clamp01((tt - TD - 1.5) / 2));
     P.moon.intensity = 1.25 * clamp01((cageY + 1.5 - (P.SH - 5)) / 5) * (st.phase === 'dive' ? 0 : 1);
     P.surfLight.intensity = 16 * (cageY > P.SH - 12 ? 1 : 0) * (.9 + Math.random() * .1);
+    { const up = clamp01((pos.y - (P.SH - 2.5)) / 3); scene.fog.density = .07 + (.015 - .07) * up; scene.fog.color.setRGB(.024 + .02 * up, .016 + .03 * up, .012 + .05 * up);
+      if (pos.y > P.SH - 4) P.rain.position.set(pos.x, Math.max(P.SH - 1, pos.y - 9), pos.z); P.rain.visible = pos.y > P.SH - 6;
+      P.beacon.material.opacity = Math.max(0, Math.sin(t * 2.6)) ** 6 * .95 * up; P.village.material.opacity = (.75 + Math.sin(t * 1.7) * .08) * up; }
+    { let best = null, bd = 99; for (const l of P.levels) { const d = Math.abs(pos.y - (l.y + 1.3)); if (d < bd) { bd = d; best = l; } }
+      if (best && st.phase !== 'dive') { P.levelLight.position.copy(best.light); P.levelLight.intensity = 5 * clamp01(1 - bd / 7.5); } else P.levelLight.intensity = 0; }
     // the shaft's lanterns: each one clunks on as the cage comes down to it
     for (const b of SHAFT) { const want = (pos.y - b.y < 7.5 || st.skip) && st.phase !== 'dive' ? 1 : 0; if (want !== b.want) { b.want = want; b.t0 = NOW; if (want && !st.skip) sfx('clunk', .45 + Math.random() * .2); } }
     const u = clamp01(tt / TE);
+    if (skipBtn) skipBtn.classList.toggle('on', st.phase === 'film' && !st.skip && t > 1.2);
     if (st.phase === 'film' && st.posted && (u >= 1 || (st.blend && NOW - st.blend.t > 900))) ready();
     st.mx += (st.px - st.mx) * .04; st.my += (st.py - st.my) * .04;
     if (!film) walking = 0;
@@ -476,7 +498,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     // rain outside, rain on the roof, spores in the light
     P.rainT.offset.y = (P.rainT.offset.y - dt * .1) % 1;
     const rp = P.rain.geometry.attributes.position;
-    for (let i = 0; i < rp.count; i += 2) { let y = rp.getY(i) - dt * 7.5; if (y < 0) y += 6; rp.setY(i, y); rp.setY(i + 1, y - .18); }
+    for (let i = 0; i < rp.count; i += 2) { let y = rp.getY(i) - dt * 8.5; if (y < 0) y += 14; rp.setY(i, y); rp.setY(i + 1, y - .2); }
     rp.needsUpdate = true;
     P.spores.rotation.y = Math.sin(t * .05) * .05; P.spores.position.y = Math.sin(t * .23) * .05;
     // the bench CRTs wake as you pass; their buds keep their eyes on you

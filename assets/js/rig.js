@@ -195,7 +195,11 @@ export function installRig(X) {
       else if (r.pending) log(`BLOCK #${b.height} IS YOURS. the ${fsol(b.reward)} SOL payout is on its way; the engine keeps sending it until it lands.`, 'gold', b.sig);
       else log(`BLOCK #${b.height} IS YOURS. the pool was still filling, so this one paid nothing. the fees keep coming.`, 'gold');
       X.refresh && X.refresh();
-      X.toast(r.paid || r.pending ? `you found $${w.symbol} block #${b.height}: +${fsol(b.reward)} SOL` : `you found $${w.symbol} block #${b.height}`, { kind: 'gold', ms: 7000, onclick: () => X.open('chain', { mint: w.mint }) });
+      const card = { mint: w.mint, symbol: w.symbol, height: b.height, hash: b.hash || hash, reward: b.reward, secs: b.secs, miner: R.miner, sig: b.sig };
+      R.lastFind = card; paintShare();
+      X.toast(r.paid || r.pending ? `you found $${w.symbol} block #${b.height}: +${fsol(b.reward)} SOL` : `you found $${w.symbol} block #${b.height}`, { kind: 'gold', ms: 7000, onclick: () => X.shareBlock ? X.shareBlock(card) : X.open('chain', { mint: w.mint }) });
+      // once the gold has settled, the picture of the block opens by itself
+      if (X.shareBlock) setTimeout(() => X.shareBlock(card), 3400);
     } else if (r.stale) log(r.error || 'someone found it first.', 'dim');
     else if (r.need) { log(r.error, 'bad'); R.elig = null; R.eligFor = ''; checkElig(true); stop('stopped: this wallet doesn’t hold enough to mine.'); return; }
     else if (r.cooldown) log(r.error, 'dim');
@@ -296,6 +300,7 @@ export function installRig(X) {
     sel.innerHTML = (cur ? '' : '<option value="">pick a mine…</option>') + extra + opts || '<option value="">no mines open yet</option>';
     if (cur) sel.value = cur;
   }
+  function paintShare() { const b = R.el && $('.rg-share', R.el); if (b) { b.hidden = !R.lastFind; if (R.lastFind) b.textContent = `share block #${R.lastFind.height}`; } }
   function paintBtn() {
     const b = R.el && $('.rg-go', R.el); if (!b) return;
     b.disabled = R.busy;
@@ -361,7 +366,7 @@ export function installRig(X) {
         </div>
         <div class="rg-hash"><div><span>target</span><code class="rg-t">—</code></div><div><span>your best</span><code class="rg-b">—</code></div><div><span>hashing</span><code class="rg-s">—</code></div><div class="rg-z"></div></div>
         <div class="rg-elig"></div>
-        <div class="rg-ctl"><div class="rg-thr"><span>threads</span><button type="button" class="chip" data-t="-1" aria-label="fewer threads">−</button><b class="rg-tn">${R.threads}</b><button type="button" class="chip" data-t="1" aria-label="more threads">+</button><small class="dim">of ${CORES} cores</small></div><button type="button" class="btn go rg-go">⛏ start mining</button></div>
+        <div class="rg-ctl"><div class="rg-thr"><span>threads</span><button type="button" class="chip" data-t="-1" aria-label="fewer threads">−</button><b class="rg-tn">${R.threads}</b><button type="button" class="chip" data-t="1" aria-label="more threads">+</button><small class="dim">of ${CORES} cores</small></div><button type="button" class="btn ghost rg-share" hidden>share my block</button><button type="button" class="btn go rg-go">⛏ start mining</button></div>
         <div class="rg-log scroll"></div></div>`;
       const sel = $('.rg-sel', el), wal = $('.rg-wal', el);
       wal.value = R.miner || (WAL.current() ? WAL.current().address : '');
@@ -371,6 +376,8 @@ export function installRig(X) {
       $('[data-x=use]', el).onclick = async () => { try { const w = WAL.current() || await X.connect(); wal.value = w.address; wal.oninput(); } catch (e) { X.toast(e.message); } };
       $$('[data-t]', el).forEach(b => b.onclick = () => { R.threads = Math.max(1, Math.min(CORES, R.threads + +b.dataset.t)); X.ls.set('mw:threads', String(R.threads)); if (R.on && !R.cooling) startJob(); paint(); SOUND.sfx('tick'); });
       $('.rg-go', el).onclick = () => R.on ? stop() : start();
+      $('.rg-share', el).onclick = () => R.lastFind && X.shareBlock && X.shareBlock(R.lastFind);
+      paintShare();
       X.on('mines', () => { fillSelect(); paint(); });
       X.on('wallet', w => { if (w && !wal.value.trim()) { wal.value = w.address; wal.oninput(); } });
       X.on('feed', it => { if (it.kind === 'block' && it.mint === R.mint) { if (!R.on) log(it.text, 'blk'); pollWork(); } });

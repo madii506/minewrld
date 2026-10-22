@@ -1,5 +1,5 @@
 // miner.sh: a real terminal. Every command that shows numbers reads the live engine; nothing here is made up.
-import { sha256hex, headerOf } from './rig.js?v=1';
+import { sha256hex, headerOf } from './rig.js?v=2';
 export function installTerm(X) {
   const { esc, api, fsol, ftok, ago, short, solscan, pumpfun, acct, SOUND } = X;
   let out, inp, wrap, hist = [], hi = 0, follow = null, booted = false, busy = false;

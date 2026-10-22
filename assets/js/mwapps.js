@@ -1,8 +1,10 @@
 // Mine windows: welcome, launch.exe, veins (every mine), a window per mine, the ledger, readme, display, recycle bin.
-import { installMore } from './apps2.js?v=1';
-import { installRig } from './rig.js?v=1';
-import { installChain } from './chain.js?v=1';
-import { installStats } from './mwstats.js?v=1';
+import { installMore } from './apps2.js?v=2';
+import { installRig } from './rig.js?v=2';
+import { installChain } from './chain.js?v=2';
+import { installStats } from './mwstats.js?v=2';
+import { installMountain } from './mountain.js?v=2';
+import { installShare } from './share.js?v=2';
 
 export function installApps(X) {
   const { $, $$, esc, api, fsol, ftok, ago, short, solscan, pumpfun, acct, SOUND, ICONS, WAL } = X;
@@ -15,7 +17,7 @@ export function installApps(X) {
 
   // ================================================================ welcome
   A.welcome = {
-    title: 'welcome to Mine', short: 'welcome', icon: 'welcome', w: 620, h: 500, nomax: true,
+    title: 'welcome to Mine', short: 'welcome', icon: 'welcome', w: 620, h: 500, nomax: true, at: 'left',
     build(el) {
       el.innerHTML = `<div class="wel">
         <div class="wel-hero"><canvas class="wel-bud" width="96" height="96"></canvas><div><h2 class="h">every coin is a mine.</h2><p class="sub">your browser mines it. every block pays SOL.</p></div></div>
@@ -274,11 +276,19 @@ export function installApps(X) {
         <div class="vn-links">${link(pumpfun(m.mint), 'pump.fun ↗')} ${link('https://dexscreener.com/solana/' + m.mint, 'chart ↗')} ${link(acct(m.wallet), 'mine wallet ↗')}</div></div>
         <button class="btn go vn-mine" type="button">⛏ mine $${esc(m.symbol)}</button></div>
       <div class="vn-stats"></div>
+      <div class="vn-lad"></div>
       <div class="vn-cols"><div><h4>latest blocks</h4><div class="vn-blocks scroll"></div></div><div><h4>top miners</h4><div class="vn-top8"></div><h4>the mine’s log</h4><div class="vn-log scroll"></div></div></div></div>`;
     $('.vn-mine', el).onclick = () => X.open('rig', { mint: m.mint });
     const stats = () => {
       $('.vn-stats', el).innerHTML = [['next block pays', fsol(m.pool) + ' SOL', 'gold'], ['chain height', '#' + m.height, ''], ['paid to miners', fsol(m.paid) + ' SOL', ''], ['mining now', m.miners + (m.rate ? ' · ' + hs(m.rate) : ''), ''], ['a block takes', '~' + big(m.expected) + ' hashes', ''], ['last block', m.lastBlockAt ? ago(m.lastBlockAt) + ' ago' : 'none yet', '']]
         .map(([t, v, c]) => `<div class="${c}"><b>${esc(v)}</b><span>${esc(t)}</span></div>`).join('');
+      // how deep it has gone: the four levels, and how far to the next one
+      const L = [['shallow', 0], ['deep', 25], ['deeper', 250], ['bedrock', 2500]], b = Number(m.blocks || 0); let i = 0; while (i < 3 && b >= L[i + 1][1]) i++;
+      const nx = L[i + 1], f = nx ? (b - L[i][1]) / (nx[1] - L[i][1]) : 1;
+      const lad = `<div class="vl-row">${L.map(([n, at], k) => `<span class="${k < i ? 'done' : k === i ? 'on' : ''}"><b>${n}</b><small>${at.toLocaleString()}+ blocks</small></span>`).join('')}</div>
+        <div class="vl-bar"><i style="width:${((i + Math.min(1, f)) / 4 * 100).toFixed(1)}%"></i>${L.map((_, k) => `<em style="left:${k * 25}%"></em>`).join('')}</div>
+        <small class="dim">${nx ? `${b.toLocaleString()} block${b === 1 ? '' : 's'} found · ${(nx[1] - b).toLocaleString()} more to reach the ${nx[0]} level` : `${b.toLocaleString()} blocks found · as deep as it goes`}</small>`;
+      if (el._lad !== lad) { el._lad = lad; $('.vn-lad', el).innerHTML = lad; }   // redrawn (and the bar regrows) only when a block lands
     };
     const blockRow = b => `<div class="vb"><span class="vh">#${b.height}</span><span class="vm">${esc(short(b.miner))}</span><span class="vs ${b.reward > 0 ? 'gold' : 'mute'}">${b.reward > 0 ? '+' + fsol(b.reward) : 'dry'}</span><span class="mute">${esc(ago(b.at))}</span>${b.sig ? link(solscan(b.sig), 'tx ↗') : '<span class="mute">…</span>'}</div>`;
     async function load() {
@@ -385,6 +395,6 @@ export function installApps(X) {
   };
 
   const more = installMore(X); delete more.greenhouse; delete more.bagwork;
-  Object.assign(A, more, installRig(X), installChain(X), installStats(X));
+  Object.assign(A, more, installRig(X), installChain(X), installStats(X), installMountain(X), installShare(X));
   return A;
 }

@@ -1,5 +1,5 @@
 // chain.exe: every mine's chain, block by block, and a verify button that recomputes each hash in your browser.
-import { sha256hex, headerOf } from './rig.js?v=1';
+import { sha256hex, headerOf } from './rig.js?v=2';
 
 export function installChain(X) {
   const { $, $$, esc, api, fsol, ago, short, solscan, SOUND } = X;
@@ -21,6 +21,7 @@ export function installChain(X) {
       $('.ch-list', el).addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (b) pick(b.dataset.m); });
       $('.ch-blocks', el).addEventListener('click', e => {
         const v = e.target.closest('[data-v]'); if (v) return verifyOne(+v.dataset.v);
+        const sh = e.target.closest('[data-sh]'); if (sh) { const b = C.rows[+sh.dataset.sh]; if (b && X.shareBlock) X.shareBlock({ ...b, mint: b.mint || C.mint, symbol: b.symbol || (C.data && C.data.symbol) }); return; }
         const mo = e.target.closest('.ch-more'); if (mo) return more();
         const m = e.target.closest('[data-open]'); if (m) return X.openMine(m.dataset.open);
       });
@@ -78,7 +79,7 @@ export function installChain(X) {
         <span>found in</span><code>${b.secs != null ? Number(b.secs).toFixed(1) + ' s' : '—'} · ${esc(ago(b.at))} ago</code>
         <span>paid</span><span>${pay}</span>
       </div>
-      <div class="cb-v"><button type="button" class="chip" data-v="${i}">verify</button><span class="cb-res"></span></div>
+      <div class="cb-v"><button type="button" class="chip" data-v="${i}">verify</button><button type="button" class="chip ghost" data-sh="${i}" title="make a picture of this block">share</button><span class="cb-res"></span></div>
     </article>`;
   }
   function render(anim) {
