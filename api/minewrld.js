@@ -294,18 +294,29 @@ async function meta(req, res) {
 }
 // ---------------------------------------------------------------- the legends: big pump.fun coins of the past, hung as paintings in the mine's galleries.
 // Their pictures come from DexScreener through here, so the 3D scene can paint with them (same origin) and the CDN keeps a copy.
-const LEGENDS = [   // [mint, symbol, name, level (0 shallow · 1 deep · 2 deeper), slot (0 back wall · 1 left · 2 right)]
+const LEGENDS = [   // [mint, symbol, name, place (0 shallow · 1 deep · 2 deeper · 3 the bedrock tunnel), slot]; every mint checked against DexScreener and CoinGecko's pump.fun list
   ['Dfh5DzRgSvvCFDoYc2ciTkMrbDfRKybA4SoFbPmApump', 'PIPPIN', 'Pippin', 0, 0],
   ['A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump', 'FWOG', 'FWOG', 0, 1],
   ['KENJSUYLASHUMfHyy5o4Hp2FdNqZg1AsUPhfH2kYvEP', 'GRIFFAIN', 'griffain', 0, 2],
+  ['DKu9kykSfbN5LBfFXtNNDPaX35o4Fv6vJ9FKk7pZpump', 'AVA', 'Ava AI', 0, 3],
   ['ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY', 'MOODENG', 'Moo Deng', 1, 0],
   ['8x5VqbHA8D7NkD52uNuS5nnt3PwA8pLD34ymskeSo2Wn', 'ZEREBRO', 'zerebro', 1, 1],
   ['61V8vBaqAGMpgDQi4JcAwo1dmBGHsyhzodcPqnEVpump', 'ARC', 'AI Rig Complex', 1, 2],
+  ['FeR8VBqNRSUD5NtXAj2n3j1dAHkZHfyDktKuLXD4pump', 'JELLYJELLY', 'Jelly-My-Jelly', 1, 3],
   ['9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump', 'FARTCOIN', 'Fartcoin', 2, 0],
   ['2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump', 'PNUT', 'Peanut the Squirrel', 2, 1],
   ['CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump', 'GOAT', 'Goatseus Maximus', 2, 2],
+  ['HNg5PYJmtqcmzXrv6S9zP1CDKk5BgDuyFBxbvNApump', 'ALCH', 'Alchemist AI', 2, 3],
+  ['Ce2gx9KGXJ6C9Mp5b5x1sn9Mg87JwEbrQby4Zqo3pump', 'NEET', 'Not in Employment, Education, or Training', 3, 0],
+  ['HgBRWfYxEfvPhtqkaeymCQtHCrKE46qQ43pKe8HCpump', 'BERT', 'Bertram the Pomeranian', 3, 1],
+  ['y1AZt42vceCmStjW4zetK3VoNarC1VxJ5iDjpiupump', 'FARTBOY', 'Fartboy', 3, 2],
+  ['GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump', 'ACT', 'Act I: The AI Prophecy', 3, 3],
+  ['DtR4D9FtVoTX2569gaL837ZgrB6wNjj6tkmnX9Rdk9B2', 'AURA', 'aura', 3, 4],
+  ['74SBV4zDXxTRgv1pEMoECskKBkZHc2yGPnc7GYVepump', 'SWARMS', 'Swarms', 3, 5],
+  ['eL5fUxj2J4CiQsmW85k5FG9DvuQjjUoBHoQBi2Kpump', 'UFD', 'Unicorn Fart Dust', 3, 6],
+  ['Cm6fNnMk7NfzStP9CZpsQA2v3jjzbcYGAxdJySmHpump', 'BUTTCOIN', 'Buttcoin', 3, 7],
 ];
-function legends(req, res) { L.send(res, 200, { ok: true, legends: LEGENDS.map(([mint, symbol, name, lv, slot]) => ({ mint, symbol, name, lv, slot, img: '/api/limg?q=2&m=' + mint })) }, L.CACHE(3600)); }
+function legends(req, res) { L.send(res, 200, { ok: true, legends: LEGENDS.map(([mint, symbol, name, lv, slot]) => ({ mint, symbol, name, lv, slot, img: '/api/limg?q=3&m=' + mint })) }, L.CACHE(3600)); }
 async function limg(req, res) {
   const qy = L.query(req), m = String(qy.m || ''), it = LEGENDS.find(l => l[0] === m), why = qy.why === '1', log = [];
   const miss = () => { if (why) return L.send(res, 200, { ok: false, log }); res.statusCode = 404; res.setHeader('Cache-Control', 'public, max-age=60'); res.end(); };
@@ -315,7 +326,7 @@ async function limg(req, res) {
   const HOSTS = /(^|\.)(dexscreener\.com|pump\.fun|ipfs\.io|pinata\.cloud|mypinata\.cloud|nftstorage\.link|arweave\.net|irys\.xyz|cf-ipfs\.com)$/;
   const grab = async url => {   // one picture, from an allowed host, that really is a picture
     try { const u = new URL(url); if (u.protocol !== 'https:' || !HOSTS.test(u.hostname)) { log.push('host ' + u.hostname); return null; }
-      const r = await fetch(u, { headers: { 'user-agent': L.UA, accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8', referer: 'https://dexscreener.com/' }, redirect: 'follow', signal: AbortSignal.timeout(8000) });
+      const r = await fetch(u, { headers: { 'user-agent': L.UA, accept: 'image/jpeg,image/png;q=0.9,image/webp;q=0.5', referer: 'https://dexscreener.com/' }, redirect: 'follow', signal: AbortSignal.timeout(8000) });
       const type = (r.headers.get('content-type') || '').split(';')[0]; log.push(u.hostname + ' ' + r.status + ' ' + type);
       if (!r.ok || !/^image\//.test(type)) return null; const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length || buf.length > 4e6) return null; return { buf, type };
     } catch (e) { log.push('err ' + String(e.message).slice(0, 60)); return null; } };
