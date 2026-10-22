@@ -323,7 +323,11 @@ export function build(scene, mobile) {
       if (img) { const k = Math.max(w / img.width, h / img.height), iw = img.width * k, ih = img.height * k; g.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih); }
       else { g.fillStyle = '#2a1d10'; g.fillRect(0, 0, w, h); for (let i = 0; i < 90; i++) { g.strokeStyle = `rgba(${90 + rnd() * 60 | 0},${60 + rnd() * 40 | 0},${30 + rnd() * 20 | 0},.18)`; g.lineWidth = 6 + rnd() * 14; g.beginPath(); const x = rnd() * w, y = rnd() * h; g.moveTo(x, y); g.lineTo(x + (rnd() - .5) * 160, y + (rnd() - .5) * 60); g.stroke(); }
         if (sym) { g.textAlign = 'center'; g.font = `${Math.min(150, 760 / Math.max(3, sym.length))}px PX, monospace`; g.fillStyle = '#e8b866'; g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.fillText('$' + sym, w / 2, h / 2 + 40); g.shadowBlur = 0; } }
-      const v = g.createRadialGradient(w / 2, h / 2, w * .3, w / 2, h / 2, w * .75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.45)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
+      // a picture light from above: warm, and stronger on a dark picture so it still reads down here
+      let lum = 128; if (img) { try { const d = g.getImageData(0, 0, w, h).data; let t2 = 0, n2 = 0; for (let i = 0; i < d.length; i += 4 * 97) { t2 += d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11; n2++; } lum = t2 / n2; } catch {} }
+      const lift = lum < 45 ? .42 : lum < 90 ? .26 : .12;
+      g.globalCompositeOperation = 'screen'; const pl = g.createRadialGradient(w / 2, -h * .15, h * .1, w / 2, -h * .15, h * 1.15); pl.addColorStop(0, `rgba(255,205,130,${lift})`); pl.addColorStop(1, 'rgba(255,205,130,0)'); g.fillStyle = pl; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over';
+      const v = g.createRadialGradient(w / 2, h / 2, w * .34, w / 2, h / 2, w * .76); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.3)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
       const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,240,210,.10)'); sh.addColorStop(.5, 'rgba(255,240,210,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
       g.fillStyle = 'rgba(255,220,160,.035)'; for (let i = 0; i < 2600; i++) g.fillRect(rnd() * w, rnd() * h, 2, 2); });
     const plaqueLook = sym => tex(512, 120, (g, w, h) => { const b = g.createLinearGradient(0, 0, 0, h); b.addColorStop(0, '#d9ab55'); b.addColorStop(1, '#8a6224'); g.fillStyle = b; g.fillRect(0, 0, w, h);
