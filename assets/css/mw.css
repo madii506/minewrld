@@ -690,3 +690,4 @@ body.booting #crt { display: none; }
 @keyframes vlgrow { from { width: 0; } }
 .vl-bar em { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0, 0, 0, .6); }
 @media (max-width: 760px) { .vl-row b { font-size: 12px; } .vl-row small { font-size: 9.5px; } }
+.vn-acts { display: flex; flex-direction: column; gap: 6px; margin-left: auto; } .vn-acts .btn { white-space: nowrap; }
