@@ -314,46 +314,64 @@ export function build(scene, mobile) {
     const plate = (w, h, sw, sh, seed) => { const g = new THREE.PlaneGeometry(w, h, sw, sh), p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, (fbm(p.getX(i) * .8 + seed, p.getY(i) * .8 + seed * .3, seed) - .5) * .32); g.computeVertexNormals(); return g; };
     const veinG = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), std({ color: 0xffb040, emissive: 0xff8a10, emissiveIntensity: 1.6, metalness: .5, roughness: .35 }), 260); let vg = 0;
     const W = 2.4, Z0 = 1.5, Z1 = 8.4, D = Z1 - Z0, ZM = (Z0 + Z1) / 2, Hh = OPEN_H;
-    // the legends: in every gallery, three paintings of big pump.fun coins of the past. one on the back wall, two on the side
-    // walls turned toward the shaft. the frames go up now; the pictures arrive from /api/legends a moment later.
+    // the legends: paintings of big pump.fun coins of the past. four in every gallery (one on the back wall, three on the side
+    // walls turned toward the shaft) and eight more along the tunnel at bedrock. one coin per frame, every one different.
+    // the frames go up now; the pictures arrive from /api/legends a moment later.
     const gilt = std({ color: 0xb98a3a, metalness: .78, roughness: .3 }), giltDark = std({ color: 0x3a2a14, metalness: .5, roughness: .6 });
+    const walnut = std({ color: 0x5a3a1e, roughness: .5, metalness: .15 }), walnutIn = std({ color: 0x1e1309, roughness: .7 });
     const lampM = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.6, .9), toneMapped: false });
-    const canvasLook = (img, sym) => tex(512, 512, (g, w, h) => {      // the picture as an oil painting: cover-fit, a little varnish and age
+    const hueOf = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+    const PS = mobile ? 320 : 512;
+    const canvasLook = (img, sym) => tex(PS, PS, (g, w, h) => {      // the picture as an oil painting: cover-fit, a little varnish and age
       g.fillStyle = '#1a120a'; g.fillRect(0, 0, w, h);
       if (img) { const k = Math.max(w / img.width, h / img.height), iw = img.width * k, ih = img.height * k; g.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih); }
-      else { g.fillStyle = '#2a1d10'; g.fillRect(0, 0, w, h); for (let i = 0; i < 90; i++) { g.strokeStyle = `rgba(${90 + rnd() * 60 | 0},${60 + rnd() * 40 | 0},${30 + rnd() * 20 | 0},.18)`; g.lineWidth = 6 + rnd() * 14; g.beginPath(); const x = rnd() * w, y = rnd() * h; g.moveTo(x, y); g.lineTo(x + (rnd() - .5) * 160, y + (rnd() - .5) * 60); g.stroke(); }
-        if (sym) { g.textAlign = 'center'; g.font = `${Math.min(150, 760 / Math.max(3, sym.length))}px PX, monospace`; g.fillStyle = '#e8b866'; g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.fillText('$' + sym, w / 2, h / 2 + 40); g.shadowBlur = 0; } }
+      else { const hu = hueOf(sym || 'mine'); g.fillStyle = `hsl(${hu},30%,17%)`; g.fillRect(0, 0, w, h);
+        for (let i = 0; i < 90; i++) { g.strokeStyle = `hsla(${(hu + (rnd() - .5) * 40 + 360) % 360},${35 + rnd() * 25 | 0}%,${26 + rnd() * 22 | 0}%,.22)`; g.lineWidth = 6 + rnd() * 14; g.beginPath(); const x = rnd() * w, y = rnd() * h; g.moveTo(x, y); g.lineTo(x + (rnd() - .5) * 160, y + (rnd() - .5) * 60); g.stroke(); }
+        if (sym) { g.textAlign = 'center'; g.font = `${Math.min(150, 760 / Math.max(3, sym.length)) * w / 512}px PX, monospace`; g.fillStyle = '#f0c27a'; g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.fillText('$' + sym, w / 2, h / 2 + 40 * w / 512); g.shadowBlur = 0; } }
       // a picture light from above: warm, and stronger on a dark picture so it still reads down here
       let lum = 128; if (img) { try { const d = g.getImageData(0, 0, w, h).data; let t2 = 0, n2 = 0; for (let i = 0; i < d.length; i += 4 * 97) { t2 += d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11; n2++; } lum = t2 / n2; } catch {} }
       const lift = lum < 45 ? .42 : lum < 90 ? .26 : .12;
       g.globalCompositeOperation = 'screen'; const pl = g.createRadialGradient(w / 2, -h * .15, h * .1, w / 2, -h * .15, h * 1.15); pl.addColorStop(0, `rgba(255,205,130,${lift})`); pl.addColorStop(1, 'rgba(255,205,130,0)'); g.fillStyle = pl; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over';
       const v = g.createRadialGradient(w / 2, h / 2, w * .34, w / 2, h / 2, w * .76); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.3)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
       const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,240,210,.10)'); sh.addColorStop(.5, 'rgba(255,240,210,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
-      g.fillStyle = 'rgba(255,220,160,.035)'; for (let i = 0; i < 2600; i++) g.fillRect(rnd() * w, rnd() * h, 2, 2); });
+      g.fillStyle = 'rgba(255,220,160,.035)'; for (let i = 0; i < 2600 * w / 512; i++) g.fillRect(rnd() * w, rnd() * h, 2, 2); });
     const plaqueLook = sym => tex(512, 120, (g, w, h) => { const b = g.createLinearGradient(0, 0, 0, h); b.addColorStop(0, '#d9ab55'); b.addColorStop(1, '#8a6224'); g.fillStyle = b; g.fillRect(0, 0, w, h);
-      g.strokeStyle = 'rgba(60,36,8,.8)'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12); g.textAlign = 'center'; g.font = '64px PX, monospace'; g.fillStyle = 'rgba(255,240,200,.35)'; g.fillText(sym ? '$' + sym : '', w / 2 + 2, 84); g.fillStyle = '#2e1c06'; g.fillText(sym ? '$' + sym : '', w / 2, 82); });
+      g.strokeStyle = 'rgba(60,36,8,.8)'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12); g.textAlign = 'center'; g.font = `${sym && sym.length > 8 ? 52 : 64}px PX, monospace`; g.fillStyle = 'rgba(255,240,200,.35)'; g.fillText(sym ? '$' + sym : '', w / 2 + 2, 84); g.fillStyle = '#2e1c06'; g.fillText(sym ? '$' + sym : '', w / 2, 82); });
+    const glowM = new THREE.SpriteMaterial({ map: glowT, color: 0xffc070, transparent: true, opacity: .3, blending: THREE.AdditiveBlending, depthWrite: false });
     P.paintings = [];
-    const painting = (rg, lv, slot) => {
-      const big = slot === 0, S = big ? 1.08 : .72, sx = slot === 1 ? -1 : 1, g = new THREE.Group(); rg.add(g);
-      if (big) { g.position.set(0, 1.42, Z1 - .26); g.rotation.y = Math.PI; }
-      else { g.position.set(sx * .8, 1.5, 2.62); g.rotation.y = sx * -(Math.PI / 2 + .62); }
-      mesh(new THREE.BoxGeometry(S + .13, S + .13, .05), gilt, 0, 0, 0, g, false);
-      mesh(new THREE.BoxGeometry(S + .03, S + .03, .056), giltDark, 0, 0, 0, g, false);
-      const mat = std({ map: canvasLook(null, ''), emissive: 0xffffff, emissiveMap: null, emissiveIntensity: .38, roughness: .8 }); mat.emissiveMap = mat.map;
+    const framed = (parent, x, y, z, rotY, S, lv, slot, wall) => {
+      const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rotY; parent.add(g);
+      const dark = (lv + slot) % 2 === 1;   // gilt and walnut frames, in turn
+      mesh(new THREE.BoxGeometry(S + .13, S + .13, .05), dark ? walnut : gilt, 0, 0, 0, g, false);
+      mesh(new THREE.BoxGeometry(S + .03, S + .03, .056), dark ? walnutIn : giltDark, 0, 0, 0, g, false);
+      const mat = std({ map: canvasLook(null, ''), emissive: 0xffffff, emissiveIntensity: .38, roughness: .8 }); mat.emissiveMap = mat.map;
       mesh(new THREE.PlaneGeometry(S, S), mat, 0, 0, .03, g, false);
       const pm = std({ map: plaqueLook(''), metalness: .55, roughness: .35, emissive: 0xffffff, emissiveIntensity: .12 }); pm.emissiveMap = pm.map;
-      mesh(new THREE.PlaneGeometry(S * .5, S * .5 * 120 / 512), pm, 0, -S / 2 - .1, .03, g, false);
-      // a picture light over the frame, and the bracket that holds a side painting off the rock
+      mesh(new THREE.PlaneGeometry(S * .55, S * .55 * 120 / 512), pm, 0, -S / 2 - .1, .03, g, false);
+      // a picture light over the frame with its glow on the rock, and the bracket that holds a side painting off the wall
       mesh(new THREE.BoxGeometry(S * .55, .03, .07), gilt, 0, S / 2 + .12, .07, g, false); mesh(new THREE.BoxGeometry(S * .5, .012, .03), lampM, 0, S / 2 + .1, .1, g, false);
-      if (!big) mesh(new THREE.BoxGeometry(.05, .05, .5), iron, 0, 0, -.26, g, false);
-      return { mat, pm, lv, slot };
+      const halo = new THREE.Sprite(glowM); halo.scale.set(S * 1.7, S, 1); halo.position.set(0, S / 2 + .04, .14); g.add(halo);
+      if (wall) mesh(new THREE.BoxGeometry(.05, .05, wall), iron, 0, 0, -wall / 2 - .02, g, false);
+      P.paintings.push({ mat, pm, lv, slot });
     };
+    // a gallery: slot 0 on the back wall, 1 and 2 by the mouth, 3 further in on one side
+    const gallery = (rg, lv) => {
+      framed(rg, 0, 1.42, Z1 - .26, Math.PI, 1.08, lv, 0, 0);
+      for (const sx of [-1, 1]) framed(rg, sx * .8, 1.5, 2.62, sx * -(Math.PI / 2 + .62), .72, lv, sx < 0 ? 1 : 2, .5);
+      const fx = lv % 2 ? 1 : -1; framed(rg, fx * .86, 1.58, 5.65, fx * -(Math.PI / 2 + .42), .62, lv, 3, .32);
+    };
+    // the tunnel at bedrock: eight more between the timber sets, turned toward whoever walks in
+    const TS = [-1, 1, -1, 1, -1, 1, 1, -1];
+    setsZ.slice(0, 8).forEach((z, i) => { const sx = TS[i]; framed(scene, sx * .98, 1.5, z - .875, sx * -(Math.PI / 2 - .5), .6, 3, i, .3); });
     const hang = list => list.forEach(l => {
       const p = P.paintings.find(q => q.lv === l.lv && q.slot === l.slot); if (!p) return;
       const sym = String(l.symbol || '').toUpperCase().slice(0, 10);
       p.pm.map = plaqueLook(sym); p.pm.emissiveMap = p.pm.map; p.pm.needsUpdate = true;
       p.mat.map = canvasLook(null, sym); p.mat.emissiveMap = p.mat.map; p.mat.needsUpdate = true;
-      const im = new Image(); im.decoding = 'async'; im.onload = () => { p.mat.map = canvasLook(im, sym); p.mat.emissiveMap = p.mat.map; p.mat.needsUpdate = true; }; im.src = l.img;
+      const load = (src, again) => { const im = new Image(); im.decoding = 'async';
+        im.onload = () => { p.mat.map = canvasLook(im, sym); p.mat.emissiveMap = p.mat.map; p.mat.needsUpdate = true; };
+        im.onerror = () => { if (!again) setTimeout(() => load(src + '&r=1', true), 1500); }; im.src = src; };
+      load(l.img);
     });
     fetch('/api/legends').then(r => r.json()).then(j => hang(j.legends || [])).catch(() => {});
     LV.forEach((l, li) => {
@@ -376,7 +394,7 @@ export function build(scene, mobile) {
       const m1 = makeMiner(rg, 1.15); m1.position.set(-.62, .12, 3.1); m1.rotation.y = Math.PI; P.buds.push(m1);
       const m2 = makeMiner(rg, .95); m2.position.set(.78, .44 + .1, 6.0); m2.rotation.y = Math.PI; P.buds.push(m2);
       if (li === 1) { const m3 = makeMiner(rg, 1.0); m3.position.set(.5, .12, 2.6); m3.rotation.y = Math.PI; P.buds.push(m3); }
-      for (let slot = 0; slot < 3; slot++) P.paintings.push(painting(rg, li, slot));
+      gallery(rg, li);
       // gold in the gallery walls
       const Q3 = new THREE.Quaternion(), E3 = new THREE.Euler(), S6 = new THREE.Vector3(), lm = new THREE.Matrix4();
       for (let c = 0; c < 14; c++) { const onLeft = rnd() < .5, zz = Z0 + .4 + rnd() * (D - .7), yy = .4 + rnd() * 1.9, back = c > 11;
