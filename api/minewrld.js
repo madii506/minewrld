@@ -305,7 +305,7 @@ const LEGENDS = [   // [mint, symbol, name, level (0 shallow · 1 deep · 2 deep
   ['2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump', 'PNUT', 'Peanut the Squirrel', 2, 1],
   ['CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump', 'GOAT', 'Goatseus Maximus', 2, 2],
 ];
-function legends(req, res) { L.send(res, 200, { ok: true, legends: LEGENDS.map(([mint, symbol, name, lv, slot]) => ({ mint, symbol, name, lv, slot, img: '/api/limg?m=' + mint })) }, L.CACHE(3600)); }
+function legends(req, res) { L.send(res, 200, { ok: true, legends: LEGENDS.map(([mint, symbol, name, lv, slot]) => ({ mint, symbol, name, lv, slot, img: '/api/limg?q=2&m=' + mint })) }, L.CACHE(3600)); }
 async function limg(req, res) {
   const qy = L.query(req), m = String(qy.m || ''), it = LEGENDS.find(l => l[0] === m), why = qy.why === '1', log = [];
   const miss = () => { if (why) return L.send(res, 200, { ok: false, log }); res.statusCode = 404; res.setHeader('Cache-Control', 'public, max-age=60'); res.end(); };
@@ -320,7 +320,7 @@ async function limg(req, res) {
       if (!r.ok || !/^image\//.test(type)) return null; const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length || buf.length > 4e6) return null; return { buf, type };
     } catch (e) { log.push('err ' + String(e.message).slice(0, 60)); return null; } };
   const sources = [
-    async () => { const j = await L.getJson('https://api.dexscreener.com/tokens/v1/solana/' + m, {}, 8000); log.push('ds api ' + j.status); const p = (Array.isArray(j.json) ? j.json : []).find(x => x && x.info && x.info.imageUrl); if (!p) return null; const u = new URL(p.info.imageUrl); if (u.searchParams.has('width')) { u.searchParams.set('width', '384'); u.searchParams.set('height', '384'); } return grab(u.href); },
+    async () => { const j = await L.getJson('https://api.dexscreener.com/tokens/v1/solana/' + m, {}, 8000); log.push('ds api ' + j.status); const p = (Array.isArray(j.json) ? j.json : []).find(x => x && x.info && x.info.imageUrl); if (!p) return null; return grab(p.info.imageUrl); },
     async () => grab(`https://dd.dexscreener.com/ds-data/tokens/solana/${m}.png?size=lg`),
     async () => { const j = await L.getJson('https://frontend-api-v3.pump.fun/coins/' + m, {}, 8000); log.push('pump api ' + j.status); const uri = j.json && j.json.image_uri; if (!uri) return null; const cid = String(uri).match(/\/ipfs\/([A-Za-z0-9]+)/); return grab(cid ? 'https://ipfs.io/ipfs/' + cid[1] : uri); },
   ];
