@@ -59,7 +59,7 @@ export async function sha256hex(text) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
-export const headerOf = (mint, height, prev, miner, nonce) => `minewrld|${mint}|${height}|${prev}|${miner}|${nonce}`;
+export const headerOf = (mint, height, prev, miner, nonce) => `mine|${mint}|${height}|${prev}|${miner}|${nonce}`;
 const isAddr = a => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(a || ''));
 const zeros = hex => { let n = 0; while (n < hex.length && hex[n] === '0') n++; return n; };
 const grp = hex => String(hex || '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
@@ -98,7 +98,7 @@ export function installRig(X) {
     const w = R.work; if (!w || !isAddr(R.miner)) return;
     R.job++; R.best = null; R.sample = null;
     spawn(R.threads);
-    post({ cmd: 'job', job: R.job, prefix: `minewrld|${w.mint}|${w.height}|${w.prev}|${R.miner}|`, target: w.targetHex });
+    post({ cmd: 'job', job: R.job, prefix: `mine|${w.mint}|${w.height}|${w.prev}|${R.miner}|`, target: w.targetHex });
   }
   function onWorker(m) {
     if (m.job !== R.job) return;

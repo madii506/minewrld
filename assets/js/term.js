@@ -4,7 +4,7 @@ export function installTerm(X) {
   const { esc, api, fsol, ftok, ago, short, solscan, pumpfun, acct, SOUND } = X;
   let out, inp, wrap, hist = [], hi = 0, follow = null, booted = false, busy = false;
   try { hist = JSON.parse(X.ls.get('mw:hist') || '[]'); } catch {}
-  const PS = () => `<span class="ps"><b>miner</b>@minewrld:<i>~</i>$</span> `;
+  const PS = () => `<span class="ps"><b>miner</b>@mine:<i>~</i>$</span> `;
   function print(html, cls) {
     const d = document.createElement('div'); d.className = 'tl' + (cls ? ' ' + cls : ''); d.innerHTML = html; out.appendChild(d);
     while (out.children.length > 600) out.firstChild.remove();
@@ -112,7 +112,7 @@ export function installTerm(X) {
     const ok1 = got === b.hash, ok2 = BigInt('0x' + got.slice(0, 16)) < BigInt(b.target);
     print(`${ok1 ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'} matches the hash the chain recorded`);
     print(`${ok2 ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'} first 8 bytes ${got.slice(0, 16)} < target ${BigInt(b.target).toString(16).padStart(16, '0')}`);
-    if (b.height === 0) { const g = await sha256hex('minewrld genesis ' + m.mint); print(`${g === b.prev ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'} prev is the genesis hash`); }
+    if (b.height === 0) { const g = await sha256hex('mine genesis ' + m.mint); print(`${g === b.prev ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'} prev is the genesis hash`); }
     else { const o = j.blocks.find(x => x.height === b.height - 1); if (o) print(`${o.hash === b.prev ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'} prev is block #${o.height}’s hash`); }
     if (b.sig) print(`<span class="dim">the payout’s memo carries this hash:</span> ${link(solscan(b.sig), 'tx ↗')}`);
   }, 'chain');
@@ -181,7 +181,7 @@ export function installTerm(X) {
   add('ping', 'how fast the engine answers', async () => { const t0 = performance.now(); await api('config'); say(`pong from the engine in ${Math.round(performance.now() - t0)} ms`, 'ok'); }, 'system');
   add('minefetch neofetch', 'about this machine', () => {
     const t = X.TOTALS || {};
-    print(`<img class="tav big" src="${X.avatarURL('minefetch', 96)}" alt=""><div class="fetch">${[['os', 'minewrld OS 1.0 (deep shift)'], ['host', 'the mountain'], ['cpu', `sha-256 × ${navigator.hardwareConcurrency || '?'} cores`], ['uptime', 'since the first lantern'], ['mines', String(t.mines ?? '—') + ' open'], ['paid', fsol(t.paid) + ' SOL to finders'], ['sleep', 'not found']].map(([k, v]) => `<div><span class="ok">${k}</span><span class="dim">:</span> ${esc(v)}</div>`).join('')}<div class="sw">${['#1a0f06', '#6e3a1f', '#a8641c', '#ffb347', '#f2c14e', '#fff1cf'].map(c => `<i style="background:${c}"></i>`).join('')}</div></div>`, 'fetchl');
+    print(`<img class="tav big" src="${X.avatarURL('minefetch', 96)}" alt=""><div class="fetch">${[['os', 'Mine OS 1.0 (deep shift)'], ['host', 'the mountain'], ['cpu', `sha-256 × ${navigator.hardwareConcurrency || '?'} cores`], ['uptime', 'since the first lantern'], ['mines', String(t.mines ?? '—') + ' open'], ['paid', fsol(t.paid) + ' SOL to finders'], ['sleep', 'not found']].map(([k, v]) => `<div><span class="ok">${k}</span><span class="dim">:</span> ${esc(v)}</div>`).join('')}<div class="sw">${['#1a0f06', '#6e3a1f', '#a8641c', '#ffb347', '#f2c14e', '#fff1cf'].map(c => `<i style="background:${c}"></i>`).join('')}</div></div>`, 'fetchl');
   }, 'system');
   add('exit quit', 'close the terminal', () => X.WM.close('term'), 'system');
   add('pet', 'let a miner out onto the taskbar', a => { X.emit('pet:spawn', a[0] || null); say('a miner climbed onto the taskbar.', 'ok'); }, 'fun');
@@ -222,7 +222,7 @@ export function installTerm(X) {
   async function bootText() {
     if (booted) return; booted = true;
     await slow([
-      `<img class="tav big" src="${X.avatarURL('term', 64)}" alt=""><span class="hl big">miner.sh</span> <span class="dim">· minewrld OS terminal · deep shift</span>`,
+      `<img class="tav big" src="${X.avatarURL('term', 64)}" alt=""><span class="hl big">miner.sh</span> <span class="dim">· Mine OS terminal · deep shift</span>`,
       '<span class="dim">every coin is a mine. your browser mines it. every block pays SOL.</span>',
       `<span class="dim">type</span> <span class="ok">help</span><span class="dim">, or try</span> <span class="ok">veins</span><span class="dim">,</span> <span class="ok">stats</span><span class="dim">,</span> <span class="ok">feed -f</span><span class="dim">,</span> <span class="ok">blocks $TICKER</span><span class="dim">,</span> <span class="ok">verify $TICKER</span><span class="dim">,</span> <span class="ok">rig</span>`,
       '&nbsp;'], 60);

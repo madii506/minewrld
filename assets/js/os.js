@@ -1,4 +1,4 @@
-// minewrld OS: the mine at night, the dive into the foreman's terminal, a short boot, then an amber desktop where every
+// Mine OS: the mine at night, the dive into the foreman's terminal, a short boot, then an amber desktop where every
 // window works and the miners live on the taskbar. The windows, the terminal, the rig and the pets all read the same live engine.
 import { createSound } from './sound.js?v=1';
 import * as WAL from './wallet.js?v=1';
@@ -89,7 +89,7 @@ async function boot() {
 }
 async function fallbackBoot(go) {
   const pre = $('#ifall'); pre.hidden = false; const r = $('#room'); if (r) r.remove();
-  const lines = ['MINEWRLD BIOS v1.0  (c) the deep shift', 'cpu: sha-256 @ every core you have', 'memory test: 65536K ok', '', 'detecting lanterns ........... lit', 'detecting rails .............. laid', 'detecting veins .............. gold', 'detecting sleep .............. not found', '', 'every coin is a mine.', 'your browser mines it. every block pays SOL.', '', 'press enter.'];
+  const lines = ['MINE BIOS v1.0  (c) the deep shift', 'cpu: sha-256 @ every core you have', 'memory test: 65536K ok', '', 'detecting lanterns ........... lit', 'detecting rails .............. laid', 'detecting veins .............. gold', 'detecting sleep .............. not found', '', 'every coin is a mine.', 'your browser mines it. every block pays SOL.', '', 'press enter.'];
   for (const l of lines) { pre.textContent += l + '\n'; await sleep(70); }
   $('#itouch').classList.add('on');
   addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') go(''); }, { once: true });
@@ -264,7 +264,7 @@ function renderStart() {
   const m = $('#startm');
   const items = [['rig', 'mine a coin', 'rig.exe'], ['launch', 'launch a coin', 'launch.exe'], ['veins', 'veins', 'every mine on the mountain'], ['chain', 'chain.exe', 'every block, checkable'], ['stats', 'stats.exe', 'the mountain in numbers'], ['ledger', 'ledger', 'every block, every tx'], ['term', 'terminal', 'miner.sh'], ['-'],
     ['paint', 'paint.exe', 'draw a coin'], ['readme', 'readme.txt', 'how it works'], ['display', 'display', 'crt, sound, miners'], ['-'], ['shutdown', 'shut down…', 'back up the tunnel']];
-  m.innerHTML = `<div class="sm-side"><span>minewrld OS</span></div><div class="sm-list">${items.map(([a, t, s], i) => a === '-' ? '<hr>' : `<button type="button" data-app="${a}" style="--i:${i}"><img src="${a === 'shutdown' ? ICONS.x : ICONS[(APPS[a] || {}).icon] || ICONS.folder}" alt=""><b>${esc(t)}</b><small>${esc(s)}</small></button>`).join('')}</div>`;
+  m.innerHTML = `<div class="sm-side"><span>Mine OS</span></div><div class="sm-list">${items.map(([a, t, s], i) => a === '-' ? '<hr>' : `<button type="button" data-app="${a}" style="--i:${i}"><img src="${a === 'shutdown' ? ICONS.x : ICONS[(APPS[a] || {}).icon] || ICONS.folder}" alt=""><b>${esc(t)}</b><small>${esc(s)}</small></button>`).join('')}</div>`;
   $$('button', m).forEach(b => b.onclick = () => { closeMenus(); if (b.dataset.app === 'shutdown') return shutdown(); WM.open(b.dataset.app); });
 }
 function shutdown() {

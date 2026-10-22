@@ -1,4 +1,4 @@
-// minewrld windows: welcome, launch.exe, veins (every mine), a window per mine, the ledger, readme, display, recycle bin.
+// Mine windows: welcome, launch.exe, veins (every mine), a window per mine, the ledger, readme, display, recycle bin.
 import { installMore } from './apps2.js?v=1';
 import { installRig } from './rig.js?v=1';
 import { installChain } from './chain.js?v=1';
@@ -15,7 +15,7 @@ export function installApps(X) {
 
   // ================================================================ welcome
   A.welcome = {
-    title: 'welcome to minewrld', short: 'welcome', icon: 'welcome', w: 620, h: 500, nomax: true,
+    title: 'welcome to Mine', short: 'welcome', icon: 'welcome', w: 620, h: 500, nomax: true,
     build(el) {
       el.innerHTML = `<div class="wel">
         <div class="wel-hero"><canvas class="wel-bud" width="96" height="96"></canvas><div><h2 class="h">every coin is a mine.</h2><p class="sub">your browser mines it. every block pays SOL.</p></div></div>
@@ -77,7 +77,7 @@ export function installApps(X) {
             <div class="row"><input name="dev" type="number" min="0.01" max="10" step="0.01" value="0.1"><span class="unit">SOL</span>${[.05, .1, .5, 1].map(v => `<button class="chip" type="button" data-dev="${v}">${v}</button>`).join('')}</div></label>
           <table class="cost"></table>
           <div class="lw-wal"></div>
-          <label class="lw-ok"><input type="checkbox" name="agree"> i get it: the mine’s wallet is held by the minewrld engine. it can only claim the fees, pay my cut and pay whoever finds a block. it never sells.</label>
+          <label class="lw-ok"><input type="checkbox" name="agree"> i get it: the mine’s wallet is held by the Mine engine. it can only claim the fees, pay my cut and pay whoever finds a block. it never sells.</label>
           <div class="lw-err bad"></div>
         </section>
         <section data-s="3" hidden>
@@ -109,7 +109,7 @@ export function installApps(X) {
       const drawAv = () => { const c = $('.lw-av', el), g = c.getContext('2d'); g.clearRect(0, 0, 72, 72); g.imageSmoothingEnabled = false; const t = X.tinted(X.SPR.pet, X.hueOf(f('symbol').value || 'x')); if (t) g.drawImage(t, 0, 0, 72, 72); };
       // the bill
       const cost = () => { const c = X.CFG || { fee: .05, createSol: .03, reserveSol: .015, minDev: .01, maxDev: 10 }; const dev = Math.max(c.minDev || .01, Math.min(c.maxDev || 10, Number(f('dev').value) || 0));
-        const rows = [['launch fee', c.fee, 'to minewrld'], ['pump.fun create', c.createSol, 'the unused part comes back'], ['first buy', +(dev * 1.02).toFixed(4), `${dev} SOL + 2% slippage room, tokens to you`], ['the mine’s gas tank', c.reserveSol, 'stays with your mine for its transactions']];
+        const rows = [['launch fee', c.fee, 'to Mine'], ['pump.fun create', c.createSol, 'the unused part comes back'], ['first buy', +(dev * 1.02).toFixed(4), `${dev} SOL + 2% slippage room, tokens to you`], ['the mine’s gas tank', c.reserveSol, 'stays with your mine for its transactions']];
         const tot = rows.reduce((s, r) => s + r[1], 0);
         $('.cost', el).innerHTML = rows.map(([k, v, n]) => `<tr><td>${esc(k)}<small>${esc(n)}</small></td><td>${v.toFixed(4)} SOL</td></tr>`).join('') + `<tr class="tot"><td>total, one transfer from your wallet</td><td>${tot.toFixed(3)} SOL</td></tr>`; return tot; };
       f('dev').oninput = cost; $$('[data-dev]', el).forEach(b => b.onclick = () => { f('dev').value = b.dataset.dev; cost(); });
@@ -332,11 +332,11 @@ export function installApps(X) {
     build(el) {
       const c = X.CFG || { fee: .05, createSol: .03, reserveSol: .015, devCap: 30, minHold: 100000, cooldown: 4, blockSecs: 60, minPay: .0005 };
       el.innerHTML = `<div class="np"><div class="np-menu"><span>file</span><span>edit</span><span>format</span><span>view</span><span>help</span></div><div class="np-doc scroll">
-<h1>minewrld</h1><p class="np-tag">every coin is a mine. your browser mines it. every block pays SOL.</p>
+<h1>Mine</h1><p class="np-tag">every coin is a mine. your browser mines it. every block pays SOL.</p>
 <h2>what is a mine</h2>
 <p>when you launch a coin here, it gets a mine: a Solana wallet made for that one coin and set as the coin’s creator on pump.fun. pump.fun pays a creator fee on every trade. every minute the engine claims those fees into the mine’s pool.</p>
 <h2>what you mine</h2>
-<p>every coin has its own proof-of-work chain. a block is a line of text: <code>minewrld|mint|height|previous block’s hash|your wallet|nonce</code>. your browser hashes it with SHA-256, over and over, changing the nonce. when the first 8 bytes of a hash, read as a number, come out under the chain’s target, you found the block.</p>
+<p>every coin has its own proof-of-work chain. a block is a line of text: <code>mine|mint|height|previous block’s hash|your wallet|nonce</code>. your browser hashes it with SHA-256, over and over, changing the nonce. when the first 8 bytes of a hash, read as a number, come out under the chain’s target, you found the block.</p>
 <p>your wallet is inside the line you hash, so a block you find can only pay you. nobody can take it and send it as theirs.</p>
 <h2>what a block pays</h2>
 <p>the whole pool: every fee claimed since the last block${c.devCap ? `, minus the launcher’s dev cut (0–${c.devCap}%, locked at launch)` : ''}. it’s paid straight to your wallet in one Solana transaction, and that transaction’s memo carries the block’s hash, so every block is on chain. if the pool holds less than ${c.minPay} SOL, the block is still yours but pays nothing, and the pool keeps filling for the next one.</p>
@@ -352,8 +352,8 @@ export function installApps(X) {
 <h2>who holds the mine’s wallet</h2>
 <p>the engine does. each mine’s key is derived on our server from one master secret, never stored and never shown. the engine can do four things with it: claim the fees, pay the dev cut, pay a block’s finder, and hand out the first buy. it has no sell and no withdraw. you are trusting it to do exactly that, so everything it does is a public Solana transaction.</p>
 <h2>the honest part</h2>
-<p>minewrld is not an investment and promises nothing about price. mining here is a fair race weighted by work, not useful compute: blocks pay only what the coin earned in fees. a coin nobody trades pays tiny blocks. a faster machine finds more blocks, and the cooldown only slows that down. use what you can afford to lose.</p>
-<p class="dim">minewrld OS 1.0 · deep shift edition</p></div></div>`;
+<p>Mine is not an investment and promises nothing about price. mining here is a fair race weighted by work, not useful compute: blocks pay only what the coin earned in fees. a coin nobody trades pays tiny blocks. a faster machine finds more blocks, and the cooldown only slows that down. use what you can afford to lose.</p>
+<p class="dim">Mine OS 1.0 · deep shift edition</p></div></div>`;
     },
   };
 

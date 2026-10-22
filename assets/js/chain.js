@@ -8,7 +8,7 @@ export function installChain(X) {
   const zeros = hex => { let n = 0; while (n < hex.length && hex[n] === '0') n++; return n; };
   const hl = (hex, n = 16) => { const s = String(hex || '').slice(0, n); const z = Math.min(zeros(s), s.length); return `<i>${esc(s.slice(0, z))}</i>${esc(s.slice(z))}`; };
   const big = n => X.big ? X.big(n) : String(n);
-  const genesis = mint => sha256hex('minewrld genesis ' + mint);
+  const genesis = mint => sha256hex('mine genesis ' + mint);
 
   A.chain = {
     title: 'chain.exe — every block, checkable', short: 'chain.exe', icon: 'chain', w: 900, h: 600, minW: 480, minH: 360,
@@ -84,7 +84,7 @@ export function installChain(X) {
   function render(anim) {
     const box = $('.ch-blocks', C.el);
     if (!C.rows.length) { box.innerHTML = `<div class="empty">${C.mint ? 'no blocks on this chain yet. block #0 is waiting to be found.' : 'no blocks yet anywhere. the first miner in takes block #0.'}<br><br><button type="button" class="btn go" data-x="mine">⛏ start mining</button></div>`; $('[data-x=mine]', box).onclick = () => X.open('rig', C.mint ? { mint: C.mint } : undefined); return; }
-    box.innerHTML = C.rows.map(card).join('') + (C.mint && C.rows[C.rows.length - 1].height > 0 ? `<button type="button" class="btn ghost ch-more">load older blocks</button>` : C.mint ? `<div class="cb-gen"><code>genesis</code> sha256("minewrld genesis ${esc(C.mint)}")</div>` : '');
+    box.innerHTML = C.rows.map(card).join('') + (C.mint && C.rows[C.rows.length - 1].height > 0 ? `<button type="button" class="btn ghost ch-more">load older blocks</button>` : C.mint ? `<div class="cb-gen"><code>genesis</code> sha256("mine genesis ${esc(C.mint)}")</div>` : '');
     if (anim && X.fx) X.fx.stagger($$('.cb', box), 'in', 30, 40);
   }
 

@@ -1,6 +1,6 @@
 // The way in: rain on a mountain at night, and a mine going into it. The lanterns clunk on one by one down the tunnel,
 // the little miners on the crates turn to watch you, eyes blink in the cracks of the walls. At the far end an old amber
-// terminal boots. Type on it, or press enter, and you go through the screen into minewrld.
+// terminal boots. Type on it, or press enter, and you go through the screen into Mine.
 import * as THREE from './vendor/three.module.min.js';
 import { EffectComposer } from './vendor/EffectComposer.js';
 import { RenderPass } from './vendor/RenderPass.js';
@@ -77,8 +77,8 @@ class Terminal {
     let y = this.Y;
     const run = (runs, x0, yy) => { let x = x0; for (const [s, c] of runs) { g.fillStyle = c || C.ink; g.shadowColor = g.fillStyle; g.shadowBlur = 10; g.fillText(s, x, yy); x += g.measureText(s).width; } g.shadowBlur = 0; return x; };
     if (this.logo) {
-      const px = 13, rows = Array(9).fill('');
-      for (const ch of 'minewrld') GLYPHS[ch].forEach((row, i) => rows[i] += row + '.');
+      const px = 18, rows = Array(9).fill('');
+      for (const ch of 'mine') GLYPHS[ch].forEach((row, i) => rows[i] += row + '.');
       const k = Math.min(1, this.logo), x0 = this.X + 6, y0 = y + 6;
       g.shadowColor = C.ok; g.shadowBlur = 24;
       rows.forEach((row, ry) => [...row].forEach((c, rx) => {
@@ -156,15 +156,16 @@ class Terminal {
 // ---------------------------------------------------------------- camera: across the yard to the headframe, into the cage, down the shaft, along the tunnel, to the desk
 function shots(portrait, P) {
   const SH = P.SH, ZS = P.ZS;
-  const A = [[V(-.7, SH + 1.75, ZS + 8.8), V(.4, SH + 3.0, ZS)], [V(-.35, SH + 1.7, ZS + 5.4), V(.1, SH + 2.3, ZS - .2)], [V(-.05, SH + 1.6, ZS + 2.3), V(0, SH + 1.25, ZS - 1.6)], [V(0, SH + 1.5, ZS + .12), V(0, SH + .4, ZS - 2.0)]];
-  const E = portrait
-    ? [[V(0, 1.5, ZS + .12), V(0, 1.3, ZS - 4)], [V(-.05, 1.5, 6.0), V(.2, 1.15, 1.5)], [V(-.25, 1.5, 3.4), V(.4, 1.0, -.5)], [V(-.3, 1.48, .6), V(.2, 1.0, -3.0)], [V(-.1, 1.5, -2.6), V(0, 1.25, -8.0)], [V(.02, 1.5, -5.15), V(0, 1.22, -7.62)]]
-    : [[V(0, 1.5, ZS + .12), V(0, 1.3, ZS - 4)], [V(-.05, 1.5, 6.0), V(.2, 1.15, 1.5)], [V(-.25, 1.5, 3.4), V(.4, 1.0, -.5)], [V(-.3, 1.48, .6), V(.2, 1.0, -3.0)], [V(-.1, 1.5, -2.6), V(0, 1.25, -8.0)], [V(.03, 1.5, -5.3), V(0, 1.18, -7.62)]];
-  const curve = L => ({ pos: new THREE.CatmullRomCurve3(L.map(a => a[0]), false, 'centripetal'), look: new THREE.CatmullRomCurve3(L.map(a => a[1]), false, 'centripetal') });
-  return { A: curve(A), E: curve(E), top: A[A.length - 1], bottom: E[0], end: E[E.length - 1] };
+  const A = [[V(-.6, SH + 1.75, ZS + 7.8), V(.4, SH + 2.9, ZS)], [V(-.32, SH + 1.7, ZS + 4.9), V(.1, SH + 2.25, ZS - .2)], [V(-.05, SH + 1.6, ZS + 2.3), V(0, SH + 1.25, ZS - 1.6)], [V(0, SH + 1.5, ZS + .12), V(0, SH + .4, ZS - 2.0)]];
+  const end = portrait ? [V(.02, 1.5, -5.15), V(0, 1.22, -7.62)] : [V(.03, 1.5, -5.3), V(0, 1.18, -7.62)];
+  const E = [[V(0, 1.5, ZS + .12), V(0, 1.3, ZS - 4)], [V(-.05, 1.5, 6.0), V(.22, 1.12, 1.2)], [V(-.25, 1.5, 3.4), V(.3, 1.02, -1.2)], [V(-.3, 1.48, .6), V(.18, 1.05, -3.6)], [V(-.1, 1.5, -2.6), V(.04, 1.15, -6.2)], end];
+  const mk = pts => { const c = new THREE.CatmullRomCurve3(pts, false, 'centripetal'); c.arcLengthDivisions = 2400; return c; };
+  const curve = L => ({ pos: mk(L.map(a => a[0])), look: mk(L.map(a => a[1])) });
+  const top = A[A.length - 1], d = top[1].clone().sub(top[0]);
+  return { A: curve(A), E: curve(E), top, bottom: E[0], end: E[E.length - 1], pitch0: Math.atan2(d.y, Math.hypot(d.x, d.z)) };
 }
 // the film's beats, in seconds: the yard, the cage shuts, the ride down, the landing, the walk to the desk
-const TA = 4.6, TB = 5.9, TC = 15.4, TD = 16.6, TE = 26.6;
+const TA = 6.0, TB = 7.4, TC = 18.0, TD = 19.2, TE = 28.8;
 const FOV = p => p ? [62, 50] : [44, 33];
 
 // ---------------------------------------------------------------- run
@@ -174,10 +175,10 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   const intro = $('#intro'), skipBtn = $('#iskip');
   let SOLO = null; try { SOLO = splitSprite(await loadImg('/assets/img/miner.png')); } catch {}
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  const dpr = Math.min(mobile ? 1.3 : 1.5, devicePixelRatio || 1);
-  renderer.setPixelRatio(dpr); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const DPR_MAX = Math.min(mobile ? 1.15 : 1.25, devicePixelRatio || 1); let dprNow = DPR_MAX;
+  renderer.setPixelRatio(dprNow); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
-  renderer.shadowMap.enabled = !mobile; renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.enabled = !mobile; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.shadowMap.autoUpdate = false;
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x050508); scene.fog = new THREE.FogExp2(0x060403, .07);
   const P = build(scene, mobile);
   const term = new Terminal(); term.first = true; term.sprite = SOLO; P.screenAt(term.t);
@@ -224,12 +225,12 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   ev(TC * 1000 + 160, () => sfx('clunk', .5), true);
   ev(TC * 1000 + 520, () => sfx('creak'), true);
   order.forEach((b, i) => ev(TC * 1000 + 380 + Math.floor(i / 2) * 620 + (i % 2) * 130, () => { b.t0 = NOW; b.want = 1; if (i % 2 === 0) sfx('clunk', .7 + Math.random() * .3); }));
-  const PW = 20800;
+  const PW = Math.round((TD + 3.6) * 1000);
   ev(PW, () => { sfx('power'); st.crtOn = true; P.ledMat.color.setHex(0xffb347); P.monLed.color.setHex(0xffb648); term.off = false; term.power = 0; term.dirty = true; st.lampT = NOW; });
   for (let i = 1; i <= 20; i++) ev(PW + i * 23, () => { term.power = i / 20; term.dirty = true; });
   ev(PW + 21 * 23, () => { term.power = 1; term.wobble = st.skip ? 0 : 1; term.dirty = true; });
   let T = PW + 900; const at = (d, fn) => { T += d; ev(T, fn); };
-  at(0, () => { hdd(true); sfx('beep'); say([['MINEWRLD BIOS v1.0  ', C.ink], ['(c) the deep shift', C.dim]]); });
+  at(0, () => { hdd(true); sfx('beep'); say([['MINE BIOS v1.0  ', C.ink], ['(c) the deep shift', C.dim]]); });
   at(170, () => say([['cpu: ', C.dim], ['pickaxe-class @ 33 MHz', C.ink]]));
   let mi; at(130, () => { mi = term.push([['memory test: ', C.dim], ['0K', C.ok]]); });
   for (let m = 8192; m <= 65536; m += 8192) at(26, () => term.set(mi, [['memory test: ', C.dim], [m + 'K' + (m === 65536 ? ' ok' : ''), C.ok]]));
@@ -242,7 +243,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   at(120, () => { say(['', C.ink]); say([['press ', C.dim], ['DEL', C.ink], [' for setup. the miners would rather you didn\'t.', C.dim]]); });
   at(450, () => term.clear());
   at(200, () => say([['waking the miners …', C.ink]]));
-  at(380, () => { say(['', C.ink]); say([['C:\\> ', C.ok], ['run minewrld', C.white]]); });
+  at(380, () => { say(['', C.ink]); say([['C:\\> ', C.ok], ['run mine', C.white]]); });
   JOBS.forEach(([name, what], k) => {
     const label = ` 0${k + 1} ${name} `.padEnd(14, '.') + ' ', text = what.padEnd(30, ' '); let i;
     at(200, () => { i = term.push([[label, C.ink], [text, C.dim], ['[    ]', C.dim]]); });
@@ -302,7 +303,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
        [['lights    ', C.ok], ['the grow lights, on or off', C.dim]], [['storm     ', C.ok], ['you heard it', C.dim]], [['enter     ', C.ok], ['go in', C.dim]]].forEach(h => say(h)); return;
     }
     if (c === 'whoami') { say(['deep shift.', C.ok]); return; }
-    if (c === 'ver') { say(['minewrld [version 1.0.0]', C.ink]); return; }
+    if (c === 'ver') { say(['Mine [version 1.0.0]', C.ink]); return; }
     if (c === 'date' || c === 'time') { say([new Date().toString().slice(0, 24), C.ink]); return; }
     if (c === 'cls' || c === 'clear') { term.clear(); term.logo = 1; return; }
     if (c === 'sleep') { say(['the mine never closes.', C.mag]); return; }
@@ -371,7 +372,17 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     shot: (sec, q = .92) => { if (sec != null) { st.t0 = performance.now() - sec * 1000; st.freeze = sec; } step(performance.now()); return canvas.toDataURL('image/jpeg', q); },
     termShot: (sec, q = .92) => { st.noRender = true; if (sec != null) { st.t0 = performance.now() - sec * 1000; st.freeze = sec; } step(performance.now()); st.noRender = false; return term.c.toDataURL('image/jpeg', q); },
     diveShot: (ms, q = .92) => { st.hold = st.diveT + ms; step(performance.now()); return st.done ? null : canvas.toDataURL('image/jpeg', q); } };
-  function frame(now) { if (st.done) return; requestAnimationFrame(frame); if (st.paused) return; step(now); }
+  // keep it smooth: if frames run long, render fewer pixels; if there is headroom, add them back
+  const perf = { last: 0, acc: 0, n: 0, skip: 90 };
+  function adapt(now) {
+    if (perf.last) { const d = now - perf.last; if (perf.skip > 0) perf.skip--; else if (d < 250) { perf.acc += d; perf.n++; } }
+    perf.last = now;
+    if (perf.n < 40) return;
+    const avg = perf.acc / perf.n; perf.acc = 0; perf.n = 0; let nx = dprNow;
+    if (avg > 21 && dprNow > .66) nx = Math.max(.66, dprNow - .14); else if (avg < 12.5 && dprNow < DPR_MAX) nx = Math.min(DPR_MAX, dprNow + .08);
+    if (nx !== dprNow) { dprNow = nx; renderer.setPixelRatio(dprNow); composer.setPixelRatio(dprNow); resize(); perf.skip = 20; }
+  }
+  function frame(now) { if (st.done) return; requestAnimationFrame(frame); if (st.paused) return; adapt(now); step(now); }
   const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
   function step(now) {
     if (!started) { started = true; st.t0 = now; }
@@ -379,27 +390,29 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     const dt = Math.min(.05, Math.max(.001, (now - last) / 1000)); last = now;
     const t = (NOW - st.t0) / 1000;
     flush();
-    // camera: the yard, the cage, the ride down, the landing, the walk (or a glide to the desk when skipped)
+    // camera: one smooth take. the yard, the cage, the ride down, the landing, the walk (or a glide to the desk when skipped)
     const [f0, f1] = FOV(portrait()); const film = st.phase === 'film' && !st.blend;
     const tt = st.skip ? TE + 5 : t;
     let pos, look, fov, walking = 0, cageY = P.SH, gateY = 1.9, ride = 0;
-    if (tt < TA) { const k = sine(clamp01(tt / TA)); pos = S.A.pos.getPoint(k); look = S.A.look.getPoint(k); fov = f0 + 4; walking = Math.sin(Math.PI * clamp01(tt / TA)); }
-    else if (tt < TC) {
-      const u = clamp01((tt - TB) / (TC - TB)), sm = u * u * u * (u * (u * 6 - 15) + 10);
-      cageY = P.SH * (1 - sm); ride = u > 0 && u < 1 ? Math.sin(Math.PI * u) : 0;
-      gateY = 1.9 * (1 - ease(clamp01((tt - TA - .1) / .4)));
-      const pitch = -.5 + .43 * sine(clamp01((u - .05) / .9)), yaw = Math.sin(tt * .42 + 1.2) * .34 * Math.sin(Math.PI * u);
-      pos = V(0, cageY + 1.5, P.ZS + .12); look = pos.clone().add(V(Math.sin(yaw) * Math.cos(pitch) * 2, Math.sin(pitch) * 2, -Math.cos(yaw) * Math.cos(pitch) * 2));
-      pos.x += Math.sin(tt * 37) * .006 * ride + Math.sin(tt * 11.3) * .004 * ride; pos.z += Math.sin(tt * 29) * .005 * ride;
-      fov = f0 + 4 + 6 * ride;
+    const dirOf = (pitch, yaw) => V(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+    if (tt < TA) {
+      const k = sine(clamp01(tt / TA)); pos = S.A.pos.getPointAt(k); look = S.A.look.getPointAt(k);
+      fov = f0 + 3 + 2 * k; walking = Math.sin(Math.PI * clamp01(tt / TA)) ** 2;
+    } else if (tt < TC) {
+      const u = clamp01((tt - TB) / (TC - TB)), e = sine(u);
+      cageY = P.SH * (1 - e); ride = Math.sin(Math.PI * u) ** 2;
+      gateY = 1.9 * (1 - sine(clamp01((tt - TA - .15) / .55)));
+      const pitch = S.pitch0 + (-.1 - S.pitch0) * sine(clamp01(u * 1.05)), yaw = .3 * Math.sin(Math.PI * u) ** 2;
+      pos = V(0, cageY + 1.5, P.ZS + .12); look = pos.clone().add(dirOf(pitch, yaw).multiplyScalar(2));
+      fov = f0 + 5;
     } else if (tt < TD) {
-      const a = tt - TC; cageY = -.06 * Math.sin(a * 13) * Math.exp(-a * 4.5); gateY = 1.9 * ease(clamp01((a - .5) / .6));
-      const k = sine(clamp01(a / (TD - TC)));
-      pos = V(0, cageY + 1.5, P.ZS + .12); const l0 = pos.clone().add(V(0, Math.sin(-.08) * 2, -Math.cos(-.08) * 2)); look = l0.lerp(S.bottom[1], k);
-      fov = f0 + 4 - 4 * k;
+      const a = tt - TC, k = sine(clamp01(a / (TD - TC)));
+      cageY = 0; gateY = 1.9 * sine(clamp01((a - .25) / .7));
+      pos = V(0, 1.5, P.ZS + .12); look = pos.clone().add(dirOf(-.1, 0).multiplyScalar(2)).lerp(S.bottom[1], k);
+      fov = f0 + 5 - 5 * k;
     } else {
       cageY = 0; gateY = 1.9; const u = clamp01((tt - TD) / (TE - TD)), k = sine(u);
-      pos = S.E.pos.getPoint(k); look = S.E.look.getPoint(k); fov = f0 + (f1 - f0) * k; walking = Math.sin(Math.PI * clamp01((u - .02) / .9));
+      pos = S.E.pos.getPointAt(k); look = S.E.look.getPointAt(k); fov = f0 + (f1 - f0) * k; walking = Math.sin(Math.PI * u) ** 2;
     }
     if (!film) fov = f1;
     if (st.blend && st.phase === 'film') fov = st.blend.fov + (f1 - st.blend.fov) * ease(clamp01((NOW - st.blend.t) / 900));
@@ -409,7 +422,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     P.cage.position.y = cageY; P.gate.position.y = gateY;
     const ctop = cageY + 2.2, wtop = P.HT + .85; P.cable.position.y = (ctop + wtop) / 2; P.cable.scale.y = Math.max(.01, wtop - ctop);
     P.wheel.rotation.z = -(P.SH - cageY) / .7;
-    P.cageLight.intensity = (mobile ? 18 : 15) * clamp01((tt - TA + .3) / .4) * (1 - clamp01((tt - TD - 1.5) / 2));
+    P.cageLight.intensity = (mobile ? 22 : 20) * clamp01((tt - TA + .3) / .4) * (1 - clamp01((tt - TD - 1.5) / 2));
     P.moon.intensity = 1.25 * clamp01((cageY + 1.5 - (P.SH - 5)) / 5) * (st.phase === 'dive' ? 0 : 1);
     P.surfLight.intensity = 16 * (cageY > P.SH - 12 ? 1 : 0) * (.9 + Math.random() * .1);
     // the shaft's lanterns: each one clunks on as the cage comes down to it
@@ -421,7 +434,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     const settle = st.phase === 'film' && !st.skip ? clamp01((t - TE + 1.5) / 1.5) : 1;
     if (st.phase === 'ready') { const h = onScreen() || !!budUnder(); if (h !== st.hover) { st.hover = h; canvas.style.cursor = h ? 'pointer' : 'default'; } }
     st.lean += ((st.phase === 'ready' && st.hover && onScreen() ? 1 : 0) - st.lean) * .05;
-    pos.y += Math.abs(Math.sin(t * 2.7)) * .018 * walking - .009 * walking; pos.x += Math.sin(t * 1.35) * .011 * walking;
+    pos.y += (1 - Math.cos(t * 5.2)) * .006 * walking - .006 * walking; pos.x += Math.sin(t * 2.6) * .008 * walking;
     pos.x += Math.sin(t * .35) * .02 * (1 - ride) + st.mx * .06 * settle; pos.y += Math.sin(t * .5) * .01 * (1 - ride) - st.my * .03 * settle;
     if (st.lean > .001) { pos.lerp(P.SCREEN_C, st.lean * .14); look.lerp(P.SCREEN_C, st.lean * .3); }
     if (st.phase === 'dive') {
@@ -433,6 +446,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
       if (a >= 3.05 && !st.done) { st.done = true; cleanup(); onEnter(st.cmd); return; }
     }
     st.look = look; cam.position.copy(pos); cam.lookAt(look);
+    if (!mobile) { st.sf = (st.sf || 0) + 1; if (pos.z < 3.5 && st.sf % 2 === 0) renderer.shadowMap.needsUpdate = true; }
     // what the buds watch: the camera while you walk, the mouse once you're at the desk
     if (st.phase === 'ready') { tmp.set(st.mx, -st.my, .5).unproject(cam).sub(cam.position).normalize(); st.watch.copy(cam.position).addScaledVector(tmp, 1.6); }
     else st.watch.copy(cam.position);
@@ -443,7 +457,7 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
       if (b.t0 != null) { const a = (NOW - b.t0) / 1000; if (a < 0) L = b.want ? 0 : 1; else if (b.want) L = a < .05 ? 1 : a < .13 ? 0 : a < .18 ? .8 : a < .3 ? .1 : a < .36 ? .9 : 1; else L = a < .06 ? .6 : a < .1 ? .1 : a < .14 ? .3 : 0; }
       if (b.flick && L > .5 && Math.random() < .035) L = .25 + Math.random() * .4;
       b.on += (L - b.on) * .5;
-      if (b.spot) b.spot.intensity = b.on * (b.shaft ? 9 : mobile ? 5 : 3.2);
+      if (b.spot) b.spot.intensity = b.on * (mobile ? 5.5 : 4.2);
       b.barM.color.copy(b.c).multiplyScalar(.04 + b.on * 3.4); b.cone.material.opacity = b.on * .55;
       lit += b.on / P.bars.length;
     }
