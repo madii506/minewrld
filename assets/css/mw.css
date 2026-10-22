@@ -1,4 +1,4 @@
-/* minewrld OS: an amber desktop deep in the mine */
+/* Mine OS: an amber desktop deep in the mine */
 @font-face { font-family: VT; src: url(/assets/fonts/VT323-Regular.woff2) format('woff2'); font-display: swap; }
 @font-face { font-family: PX; src: url(/assets/fonts/PixelifySans.woff2) format('woff2'); font-display: swap; }
 @font-face { font-family: JB; src: url(/assets/fonts/JetBrainsMono.woff2) format('woff2'); font-display: swap; }
@@ -505,7 +505,7 @@ body.booting #crt { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { #crt::after { display: none; } }
 
-/* ================================================================ minewrld */
+/* ================================================================ Mine */
 .lvl.shallow { color: #d9b98c; border-color: #5a4126; } .lvl.deep { color: var(--green); border-color: var(--green2); }
 .lvl.deeper { color: #ffa36b; border-color: #a8541c; } .lvl.bedrock { color: var(--amber); border-color: #8a6a1c; text-shadow: 0 0 8px rgba(255, 210, 122, .55); }
 .k-claim { color: #e8a35a; } .k-block { color: var(--amber); } .k-dev { color: #e07a4a; } .k-launch { color: #ffe1b0; } .k-refund { color: var(--red); } .k-dot { color: #ffd27a; font-style: normal; }
