@@ -15,6 +15,7 @@
 //  GET  stats                  the whole mountain in numbers
 //  GET  tick                   one engine pass (the cron calls it every minute)
 //  GET  meta?id= / img?id=     the metadata JSON and picture a coin's on-chain uri points at (/m/<id>, /i/<id>)
+//  GET  legends / limg?m=      the big pump.fun coins of the past that hang as paintings in the intro, and their pictures
 //  GET  selftest               builds and simulates a create and a claim with a throwaway key (no funds move)
 const crypto = require('crypto');
 const L = require('./_lib');
@@ -291,6 +292,38 @@ async function meta(req, res) {
   L.send(res, 200, { name: k.name, symbol: k.symbol, description: k.description, image: site + '/i/' + k.id, showName: true, createdOn: site,
     twitter: k.twitter || undefined, telegram: k.telegram || undefined, website: k.website || page, external_url: page }, 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
 }
+// ---------------------------------------------------------------- the legends: big pump.fun coins of the past, hung as paintings in the mine's galleries.
+// Their pictures come from DexScreener through here, so the 3D scene can paint with them (same origin) and the CDN keeps a copy.
+const LEGENDS = [   // [mint, symbol, name, level (0 shallow · 1 deep · 2 deeper), slot (0 back wall · 1 left · 2 right)]
+  ['Dfh5DzRgSvvCFDoYc2ciTkMrbDfRKybA4SoFbPmApump', 'PIPPIN', 'Pippin', 0, 0],
+  ['A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump', 'FWOG', 'FWOG', 0, 1],
+  ['KENJSUYLASHUMfHyy5o4Hp2FdNqZg1AsUPhfH2kYvEP', 'GRIFFAIN', 'griffain', 0, 2],
+  ['ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY', 'MOODENG', 'Moo Deng', 1, 0],
+  ['8x5VqbHA8D7NkD52uNuS5nnt3PwA8pLD34ymskeSo2Wn', 'ZEREBRO', 'zerebro', 1, 1],
+  ['61V8vBaqAGMpgDQi4JcAwo1dmBGHsyhzodcPqnEVpump', 'ARC', 'AI Rig Complex', 1, 2],
+  ['9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump', 'FARTCOIN', 'Fartcoin', 2, 0],
+  ['2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump', 'PNUT', 'Peanut the Squirrel', 2, 1],
+  ['CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump', 'GOAT', 'Goatseus Maximus', 2, 2],
+];
+function legends(req, res) { L.send(res, 200, { ok: true, legends: LEGENDS.map(([mint, symbol, name, lv, slot]) => ({ mint, symbol, name, lv, slot, img: '/api/limg?m=' + mint })) }, L.CACHE(3600)); }
+async function limg(req, res) {
+  const m = String(L.query(req).m || ''), it = LEGENDS.find(l => l[0] === m);
+  const miss = () => { res.statusCode = 404; res.setHeader('Cache-Control', 'public, max-age=300'); res.end(); };
+  if (!it) return miss();
+  const out = (buf, type, cache) => { res.statusCode = 200; res.setHeader('Content-Type', type); res.setHeader('Cache-Control', cache); res.setHeader('Access-Control-Allow-Origin', '*'); res.end(buf); };
+  if (L.MOCK) { try { return out(require('fs').readFileSync(require('path').join(__dirname, '..', 'dev', 'legends', it[1] + '.png')), 'image/png', 'no-store'); } catch { return miss(); } }
+  try {
+    const j = await L.getJson('https://api.dexscreener.com/tokens/v1/solana/' + m, {}, 8000);
+    const p = (Array.isArray(j.json) ? j.json : []).find(x => x && x.baseToken && x.baseToken.address === m && x.info && x.info.imageUrl);
+    if (!p) return miss();
+    const u = new URL(p.info.imageUrl); if (u.protocol !== 'https:' || !/(^|\.)dexscreener\.com$/.test(u.hostname)) return miss();
+    if (u.searchParams.has('width')) { u.searchParams.set('width', '384'); u.searchParams.set('height', '384'); }
+    const r = await fetch(u, { headers: { accept: 'image/png,image/jpeg,image/webp;q=0.9,*/*;q=0.5' }, signal: AbortSignal.timeout(9000) });
+    const type = r.headers.get('content-type') || ''; if (!r.ok || !/^image\//.test(type)) return miss();
+    const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length || buf.length > 3e6) return miss();
+    return out(buf, type, 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000');
+  } catch { return miss(); }
+}
 async function selftest(req, res) {
   if (L.limited('st:' + L.ip(req), 6, 600000)) return L.send(res, 200, { ok: false, error: 'Wait a few minutes.' });
   const { Keypair } = require('@solana/web3.js');
@@ -327,6 +360,8 @@ module.exports = async (req, res) => {
     if (op === 'tick') { if (!L.dbReady()) return L.send(res, 200, { ok: false, error: 'engine offline: no database' }); return L.send(res, 200, await E.tick(40000)); }
     if (op === 'blockhash') return L.send(res, 200, { ok: true, ...(await E.blockhash()) });
     if (op === 'selftest') return await selftest(req, res);
+    if (op === 'legends') return legends(req, res);
+    if (op === 'limg') return await limg(req, res);
     L.send(res, 200, { ok: true, open: L.dbReady(), fee: SOL(E.FEE), feeWallet: L.FEE_WALLET, createSol: SOL(E.CREATE_COST), reserveSol: SOL(E.RESERVE), minDev: E.MIN_DEV, maxDev: E.MAX_DEV,
       devCap: E.DEV_CAP, levels: E.LEVELS, minHold: 100000, cooldown: E.COOLDOWN, blockSecs: E.BLOCK_SECS, minPay: SOL(E.MIN_PAY), mock: !!L.MOCK }, L.CACHE(60));
   } catch (e) { L.send(res, 200, { ok: false, error: 'Something broke: ' + String(e && e.message).slice(0, 120) }); }
