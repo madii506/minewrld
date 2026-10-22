@@ -350,13 +350,13 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     if (st.phase === 'dive' || st.done) return;
     if (st.phase !== 'ready') { st.pending = cmd; skip(); return; }
     st.freeze = null; st.phase = 'dive'; st.cmd = cmd; st.diveT = NOW; st.diveFrom = cam.position.clone(); st.diveLook = (st.look || S.end[1]).clone(); term.prompt = false;
-    say([['going in', C.ok], [' …', C.dim]]); hdd(true); canvas.style.cursor = 'default';
+    say([['lights out', C.ok], [' …', C.dim]]); hdd(true); canvas.style.cursor = 'default';
     intro.classList.add('diving');
     SHAFT.forEach(b => { b.t0 = null; b.want = 0; });
     const far = [...TUN].sort((a, b) => b.g.position.distanceTo(cam.position) - a.g.position.distanceTo(cam.position));
     far.forEach((b, k) => { b.t0 = NOW + 120 + k * 135; b.want = 0; setTimeout(() => sfx('clunk', .5), 120 + k * 135); });
     P.crts.forEach((c, k) => c.offT = NOW + 300 + k * 160);
-    setTimeout(() => { term.mode = 'os'; term.osK = 0; term.glitch = .7; term.dirty = true; sfx('beep'); }, 380);
+    setTimeout(() => { term.mode = 'eyes'; term.dirty = true; sfx('beep'); }, 700);
   }
   function key(e) {
     if (st.done) return;
@@ -477,16 +477,15 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     pos.y += (1 - Math.cos(t * 5.2)) * .006 * walking - .006 * walking; pos.x += Math.sin(t * 2.6) * .008 * walking;
     pos.x += Math.sin(t * .35) * .02 * (1 - ride) + st.mx * .06 * settle; pos.y += Math.sin(t * .5) * .01 * (1 - ride) - st.my * .03 * settle;
     if (st.lean > .001) { pos.lerp(P.SCREEN_C, st.lean * .14); look.lerp(P.SCREEN_C, st.lean * .3); }
-    if (st.phase === 'dive') {   // through the screen: the room goes dark, the camera flies in until the screen is all there is
-      const a = (NOW - st.diveT) / 1000, tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), dd = Math.min(.6 / (2 * tv * cam.aspect), .45 / (2 * tv)) * .84;
-      const e = ease(clamp01((a - .2) / 2.75)), aim = ease(clamp01(a / 1.4));
-      pos = st.diveFrom.clone().lerp(tmp2.copy(P.SCREEN_C).add(V(0, 0, dd)), e); look = st.diveLook.clone().lerp(P.SCREEN_C, aim);
-      st.dark = clamp01((a - .45) / 1.5);
-      renderer.toneMappingExposure = 1.1 * (1 - st.dark * .18); bloom.strength = .7 + st.dark * .25;   // the lights go out on their own; the screen keeps its glow
-      st.eyeBoost = 1 + st.dark * 1.8; st.shut = clamp01((a - 2.5) / .3);
-      term.osK = clamp01((a - .55) / 2.25); term.flash = clamp01((a - 2.95) / .28) * .9;
-      if (a >= 3.3 && !st.done) { st.done = true; cleanup(); onEnter(st.cmd); return; }
+    if (st.phase === 'dive') {   // lights out: the camera holds still, the lanterns go off one by one, only the eyes stay, then they close
+      const a = (NOW - st.diveT) / 1000;
+      pos = st.diveFrom.clone(); look = st.diveLook.clone();
+      st.dark = clamp01((a - 1.0) / 1.3);
+      renderer.toneMappingExposure = 1.1 * (1 - st.dark * .9); bloom.strength = .7 + st.dark * 1.4;
+      st.eyeBoost = 1 + st.dark * 2.8; st.shut = clamp01((a - 2.8) / .24);
+      if (a >= 3.35 && !st.done) { st.done = true; cleanup(); onEnter(st.cmd); return; }
     }
+
     st.look = look; cam.position.copy(pos); cam.lookAt(look);
     if (!mobile) { st.sf = (st.sf || 0) + 1; if (pos.z < 3.5 && st.sf % 2 === 0) renderer.shadowMap.needsUpdate = true; }
     // what the buds watch: the camera while you walk, the mouse once you're at the desk

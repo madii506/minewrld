@@ -335,8 +335,6 @@ export function build(scene, mobile) {
       const v = g.createRadialGradient(w / 2, h / 2, w * .34, w / 2, h / 2, w * .76); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.3)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
       const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,240,210,.10)'); sh.addColorStop(.5, 'rgba(255,240,210,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
       g.fillStyle = 'rgba(255,220,160,.035)'; for (let i = 0; i < 2600 * w / 512; i++) g.fillRect(rnd() * w, rnd() * h, 2, 2); });
-    const plaqueLook = sym => tex(512, 120, (g, w, h) => { const b = g.createLinearGradient(0, 0, 0, h); b.addColorStop(0, '#d9ab55'); b.addColorStop(1, '#8a6224'); g.fillStyle = b; g.fillRect(0, 0, w, h);
-      g.strokeStyle = 'rgba(60,36,8,.8)'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12); g.textAlign = 'center'; g.font = `${sym && sym.length > 8 ? 52 : 64}px PX, monospace`; g.fillStyle = 'rgba(255,240,200,.35)'; g.fillText(sym ? '$' + sym : '', w / 2 + 2, 84); g.fillStyle = '#2e1c06'; g.fillText(sym ? '$' + sym : '', w / 2, 82); });
     const glowM = new THREE.SpriteMaterial({ map: glowT, color: 0xffc070, transparent: true, opacity: .3, blending: THREE.AdditiveBlending, depthWrite: false });
     P.paintings = [];
     const framed = (parent, x, y, z, rotY, S, lv, slot, wall) => {
@@ -346,13 +344,11 @@ export function build(scene, mobile) {
       mesh(new THREE.BoxGeometry(S + .03, S + .03, .056), dark ? walnutIn : giltDark, 0, 0, 0, g, false);
       const mat = std({ map: canvasLook(null, ''), emissive: 0xffffff, emissiveIntensity: .38, roughness: .8 }); mat.emissiveMap = mat.map;
       mesh(new THREE.PlaneGeometry(S, S), mat, 0, 0, .03, g, false);
-      const pm = std({ map: plaqueLook(''), metalness: .55, roughness: .35, emissive: 0xffffff, emissiveIntensity: .12 }); pm.emissiveMap = pm.map;
-      mesh(new THREE.PlaneGeometry(S * .55, S * .55 * 120 / 512), pm, 0, -S / 2 - .1, .03, g, false);
       // a picture light over the frame with its glow on the rock, and the bracket that holds a side painting off the wall
       mesh(new THREE.BoxGeometry(S * .55, .03, .07), gilt, 0, S / 2 + .12, .07, g, false); mesh(new THREE.BoxGeometry(S * .5, .012, .03), lampM, 0, S / 2 + .1, .1, g, false);
       const halo = new THREE.Sprite(glowM); halo.scale.set(S * 1.7, S, 1); halo.position.set(0, S / 2 + .04, .14); g.add(halo);
       if (wall) mesh(new THREE.BoxGeometry(.05, .05, wall), iron, 0, 0, -wall / 2 - .02, g, false);
-      P.paintings.push({ mat, pm, lv, slot });
+      P.paintings.push({ mat, lv, slot });
     };
     // a gallery: slot 0 on the back wall, 1 and 2 by the mouth, 3 further in on one side
     const gallery = (rg, lv) => {
@@ -366,7 +362,6 @@ export function build(scene, mobile) {
     const hang = list => list.forEach(l => {
       const p = P.paintings.find(q => q.lv === l.lv && q.slot === l.slot); if (!p) return;
       const sym = String(l.symbol || '').toUpperCase().slice(0, 10);
-      p.pm.map = plaqueLook(sym); p.pm.emissiveMap = p.pm.map; p.pm.needsUpdate = true;
       p.mat.map = canvasLook(null, sym); p.mat.emissiveMap = p.mat.map; p.mat.needsUpdate = true;
       const load = (src, again) => { const im = new Image(); im.decoding = 'async';
         im.onload = () => { p.mat.map = canvasLook(im, sym); p.mat.emissiveMap = p.mat.map; p.mat.needsUpdate = true; };
