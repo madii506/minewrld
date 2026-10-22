@@ -307,22 +307,25 @@ const LEGENDS = [   // [mint, symbol, name, level (0 shallow · 1 deep · 2 deep
 ];
 function legends(req, res) { L.send(res, 200, { ok: true, legends: LEGENDS.map(([mint, symbol, name, lv, slot]) => ({ mint, symbol, name, lv, slot, img: '/api/limg?m=' + mint })) }, L.CACHE(3600)); }
 async function limg(req, res) {
-  const m = String(L.query(req).m || ''), it = LEGENDS.find(l => l[0] === m);
-  const miss = () => { res.statusCode = 404; res.setHeader('Cache-Control', 'public, max-age=300'); res.end(); };
+  const qy = L.query(req), m = String(qy.m || ''), it = LEGENDS.find(l => l[0] === m), why = qy.why === '1', log = [];
+  const miss = () => { if (why) return L.send(res, 200, { ok: false, log }); res.statusCode = 404; res.setHeader('Cache-Control', 'public, max-age=60'); res.end(); };
   if (!it) return miss();
-  const out = (buf, type, cache) => { res.statusCode = 200; res.setHeader('Content-Type', type); res.setHeader('Cache-Control', cache); res.setHeader('Access-Control-Allow-Origin', '*'); res.end(buf); };
+  const out = (buf, type, cache) => { if (why) return L.send(res, 200, { ok: true, type, bytes: buf.length, log }); res.statusCode = 200; res.setHeader('Content-Type', type); res.setHeader('Cache-Control', cache); res.setHeader('Access-Control-Allow-Origin', '*'); res.end(buf); };
   if (L.MOCK) { try { return out(require('fs').readFileSync(require('path').join(__dirname, '..', 'dev', 'legends', it[1] + '.png')), 'image/png', 'no-store'); } catch { return miss(); } }
-  try {
-    const j = await L.getJson('https://api.dexscreener.com/tokens/v1/solana/' + m, {}, 8000);
-    const p = (Array.isArray(j.json) ? j.json : []).find(x => x && x.baseToken && x.baseToken.address === m && x.info && x.info.imageUrl);
-    if (!p) return miss();
-    const u = new URL(p.info.imageUrl); if (u.protocol !== 'https:' || !/(^|\.)dexscreener\.com$/.test(u.hostname)) return miss();
-    if (u.searchParams.has('width')) { u.searchParams.set('width', '384'); u.searchParams.set('height', '384'); }
-    const r = await fetch(u, { headers: { accept: 'image/png,image/jpeg,image/webp;q=0.9,*/*;q=0.5' }, signal: AbortSignal.timeout(9000) });
-    const type = r.headers.get('content-type') || ''; if (!r.ok || !/^image\//.test(type)) return miss();
-    const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length || buf.length > 3e6) return miss();
-    return out(buf, type, 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000');
-  } catch { return miss(); }
+  const HOSTS = /(^|\.)(dexscreener\.com|pump\.fun|ipfs\.io|pinata\.cloud|mypinata\.cloud|nftstorage\.link|arweave\.net|irys\.xyz|cf-ipfs\.com)$/;
+  const grab = async url => {   // one picture, from an allowed host, that really is a picture
+    try { const u = new URL(url); if (u.protocol !== 'https:' || !HOSTS.test(u.hostname)) { log.push('host ' + u.hostname); return null; }
+      const r = await fetch(u, { headers: { 'user-agent': L.UA, accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8', referer: 'https://dexscreener.com/' }, redirect: 'follow', signal: AbortSignal.timeout(8000) });
+      const type = (r.headers.get('content-type') || '').split(';')[0]; log.push(u.hostname + ' ' + r.status + ' ' + type);
+      if (!r.ok || !/^image\//.test(type)) return null; const buf = Buffer.from(await r.arrayBuffer()); if (!buf.length || buf.length > 4e6) return null; return { buf, type };
+    } catch (e) { log.push('err ' + String(e.message).slice(0, 60)); return null; } };
+  const sources = [
+    async () => { const j = await L.getJson('https://api.dexscreener.com/tokens/v1/solana/' + m, {}, 8000); log.push('ds api ' + j.status); const p = (Array.isArray(j.json) ? j.json : []).find(x => x && x.info && x.info.imageUrl); if (!p) return null; const u = new URL(p.info.imageUrl); if (u.searchParams.has('width')) { u.searchParams.set('width', '384'); u.searchParams.set('height', '384'); } return grab(u.href); },
+    async () => grab(`https://dd.dexscreener.com/ds-data/tokens/solana/${m}.png?size=lg`),
+    async () => { const j = await L.getJson('https://frontend-api-v3.pump.fun/coins/' + m, {}, 8000); log.push('pump api ' + j.status); const uri = j.json && j.json.image_uri; if (!uri) return null; const cid = String(uri).match(/\/ipfs\/([A-Za-z0-9]+)/); return grab(cid ? 'https://ipfs.io/ipfs/' + cid[1] : uri); },
+  ];
+  for (const src of sources) { const g = await src().catch(e => { log.push('err ' + String(e.message).slice(0, 60)); return null; }); if (g) return out(g.buf, g.type, 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000'); }
+  return miss();
 }
 async function selftest(req, res) {
   if (L.limited('st:' + L.ip(req), 6, 600000)) return L.send(res, 200, { ok: false, error: 'Wait a few minutes.' });
