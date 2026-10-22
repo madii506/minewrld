@@ -79,7 +79,21 @@ export function installMountain(X) {
     g.setTransform(S, 0, 0, S, 0, 0);
     g.fillStyle = 'rgba(225,230,255,.9)'; g.beginPath(); g.arc(W0 - 40, 17, 6, 0, 7); g.fill(); g.fillStyle = '#05060c'; g.beginPath(); g.arc(W0 - 37, 15, 6, 0, 7); g.fill();
     g.fillStyle = 'rgba(160,170,210,.28)'; for (let i = 0; i < 70; i++) { const x = ((i * 53 + t * 26 + i * i * 3) % (W0 + 20)) - 10, y = ((i * 37 + t * 120) % 70); if (y < top(x + cx) - 2) g.fillRect(x | 0, y | 0, 1, 3); }
+    // weather and wildlife: a storm flash now and then, shooting stars, bats crossing the moon
+    const Z = M.amb || (M.amb = { star: null, nextStar: 3, bats: [], nextBat: 5, flash: 0, nextFlash: 9, bolt: 0, walker: { x: 60, dir: 1 } });
+    Z.nextFlash -= dt; if (Z.nextFlash <= 0) { Z.flash = 1; Z.bolt = Math.random() * (W0 - 120) + 20; Z.nextFlash = 14 + Math.random() * 26; }
+    if (Z.flash > 0) { const fl = Z.flash * (Math.random() < .3 ? .4 : 1); g.fillStyle = `rgba(190,200,255,${(.32 * fl).toFixed(3)})`; g.fillRect(0, 0, W0, 70);
+      if (Z.flash > .75) { g.fillStyle = 'rgba(235,240,255,.9)'; let bx = Z.bolt, by = 0; while (by < 46) { const nx = bx + (Math.random() - .5) * 6; g.fillRect(Math.round(Math.min(bx, nx)), by, Math.max(1, Math.round(Math.abs(nx - bx))), 1); g.fillRect(Math.round(nx), by, 1, 4); bx = nx; by += 4; } }
+      Z.flash = Math.max(0, Z.flash - dt * 2.2); }
+    Z.nextStar -= dt; if (Z.nextStar <= 0) { Z.star = { x: 40 + Math.random() * (W0 - 60), y: 3 + Math.random() * 18, life: .8 }; Z.nextStar = 5 + Math.random() * 9; }
+    if (Z.star) { const q = Z.star; q.life -= dt; q.x -= 110 * dt; q.y += 34 * dt; for (let k = 0; k < 7; k++) { g.fillStyle = `rgba(255,250,230,${(Math.min(1, q.life * 2) * (1 - k / 7)).toFixed(3)})`; g.fillRect(Math.round(q.x + k * 3), Math.round(q.y - k), 1, 1); } if (q.life <= 0) Z.star = null; }
+    Z.nextBat -= dt; if (Z.nextBat <= 0) { const n = 2 + (Math.random() * 3 | 0), y = 14 + Math.random() * 24; for (let k = 0; k < n; k++) Z.bats.push({ x: W0 + 6 + k * 9, y: y + (Math.random() - .5) * 8, v: 34 + Math.random() * 14, ph: Math.random() * 6 }); Z.nextBat = 11 + Math.random() * 14; }
+    g.fillStyle = '#0a0a10'; Z.bats = Z.bats.filter(q => { q.x -= q.v * dt; const yy = Math.round(q.y + Math.sin(t * 5 + q.ph) * 2), up = Math.sin(t * 22 + q.ph) > 0, xx = Math.round(q.x); g.fillRect(xx, yy, 1, 1); g.fillRect(xx - 2, yy + (up ? -1 : 1), 2, 1); g.fillRect(xx + 1, yy + (up ? -1 : 1), 2, 1); return q.x > -10; });
     g.setTransform(S, 0, 0, S, -Math.round(cx * S), 0);
+    // the foreman walks the ridge with his lamp
+    { const w = Z.walker; w.x += w.dir * 7 * dt; if (w.x > M.width - 20) w.dir = -1; if (w.x < 12) w.dir = 1; const wx = Math.round(w.x), wy = top(wx) - 9, img = X.SPR && X.SPR.pet;
+      if (img && wx - cx > -12 && wx - cx < W0 + 12) { const lg2 = g.createRadialGradient(wx + 4, wy + 4, 0, wx + 4, wy + 4, 14); lg2.addColorStop(0, 'rgba(255,200,110,.28)'); lg2.addColorStop(1, 'rgba(255,170,60,0)'); g.fillStyle = lg2; g.fillRect(wx - 12, wy - 12, 32, 32);
+        g.save(); g.translate(wx + 4.5, wy + (Math.sin(t * 9) > 0 ? 0 : -1)); g.scale(w.dir, 1); g.drawImage(img, -4.5, 0, 9, 9); g.restore(); } }
     if (M.stream) { g.fillStyle = 'rgba(160,220,255,.7)'; for (let k = 0; k < 26; k++) { const x = Math.round(((k * 97 + t * 14) % M.width)); if (x - cx > -2 && x - cx < W0 + 2) g.fillRect(x, M.stream[x] || 0, 2, 1); } }
     const heat = .25 + Math.sin(t * 1.3) * .08; g.fillStyle = `rgba(255,110,40,${heat.toFixed(3)})`; g.fillRect(Math.floor(cx), H0 - 8, W0 + 2, 8);
     for (let k = 0; k < 6; k++) { const ph = (t * .5 + k * .37) % 1, x = Math.round(cx + ((k * 151 + Math.floor(t * .5 + k * .37) * 67) % W0)); g.fillStyle = `rgba(255,170,80,${(1 - ph) * .8})`; g.fillRect(x, H0 - 4 - Math.round(ph * 7), 1, 1); }
@@ -121,8 +135,9 @@ export function installMountain(X) {
       if (X.RIG && X.RIG.on && X.RIG.mint === m.mint) { const b = Math.round(Math.sin(t * 4)); g.fillStyle = '#ffd27a'; g.fillRect(x + 8, y0 - 20 + b, 1, 12); g.fillStyle = '#ff6b6b'; g.fillRect(x + 9, y0 - 20 + b, 6, 4); g.font = font(6); g.textAlign = 'left'; g.fillStyle = '#fff1cf'; g.fillText('you', x + 9, y0 - 22 + b); g.strokeStyle = `rgba(255,210,122,${.4 + Math.sin(t * 4) * .3})`; g.lineWidth = 1 / S * 2; g.strokeRect(x - 5, y0 - 1, 11, y1 - y0 + 2); }
     });
     if (!M.lay.length) {   // nothing open yet: a ghost shaft that asks for the first coin
-      const x = Math.round(W0 / 2), y0 = top(x + cx); g.setLineDash([2, 2]); g.strokeStyle = 'rgba(255,179,71,.6)'; g.lineWidth = 1 / S * 2; g.strokeRect(x - 3.5 + cx, y0 + .5, 7, 40); g.setLineDash([]);
-      g.font = font(8); g.textAlign = 'center'; g.fillStyle = '#ffb347'; g.fillText('no mines yet. launch the first coin.', x + cx, y0 + 56);
+      const x = Math.round(W0 / 2 - 30), y0 = top(x + cx), a = .45 + Math.sin(t * 2.4) * .3; g.setLineDash([2, 2]); g.strokeStyle = `rgba(255,179,71,${a.toFixed(3)})`; g.lineWidth = 1 / S * 2; g.strokeRect(x - 3.5 + cx, y0 + .5, 7, 40); g.strokeRect(x - 4.5 + cx, y0 - 10.5, 9, 10); g.setLineDash([]);
+      g.fillStyle = `rgba(255,179,71,${(a * .5).toFixed(3)})`; g.fillRect(x - 3 + cx, y0 + 41, 7, 1);
+      g.font = font(8); g.textAlign = 'left'; g.fillStyle = '#ffb347'; g.fillText('no mines yet.', x + 12 + cx, y0 + 22); g.fillStyle = '#fff1cf'; g.fillText('launch the first coin ›', x + 12 + cx, y0 + 33);
     }
     // sparks, bursts, floating amounts
     for (const p of M.parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 110 * dt; g.fillStyle = p.c; g.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); }
@@ -174,7 +189,7 @@ export function installMountain(X) {
       M.cv.addEventListener('pointermove', e => {
         if (M.drag) { const r = M.cv.getBoundingClientRect(), dx = (e.clientX - M.drag.x) / r.width * W0; if (Math.abs(dx) > 2) M.drag.moved = true; M.cam = M.camT = Math.max(0, Math.min(Math.max(0, M.width - W0), M.drag.cam - dx)); }
         const i = pick(e); M.hover = i;
-        if (i < 0) { tip.hidden = true; M.cv.style.cursor = M.drag ? 'grabbing' : (M.width > W0 ? 'grab' : 'default'); return; }
+        if (i < 0) { tip.hidden = true; M.cv.style.cursor = M.drag ? 'grabbing' : !M.lay.length ? 'pointer' : (M.width > W0 ? 'grab' : 'default'); return; }
         const m = M.lay[i].m, r = M.cv.getBoundingClientRect(); M.cv.style.cursor = 'pointer';
         tip.innerHTML = `<b>$${esc(m.symbol)}</b> <span class="lvl">${esc(m.level || LV[levelOf(m.blocks)].name)}</span><div>block <b>#${m.height}</b> next · ${m.blocks} found</div><div>pool <b class="gold">${fsol(m.pool)} SOL</b></div><div>${m.miners ? `${m.miners} mining · ${esc(X.hs ? X.hs(m.rate) : m.rate)}` : 'nobody mining right now'}</div><div class="dim">click to open</div>`;
         tip.hidden = false; tip.style.left = Math.min(r.width - 190, Math.max(0, e.clientX - r.left + 14)) + 'px'; tip.style.top = Math.max(0, Math.min(r.height - 110, e.clientY - r.top - 10)) + 'px';

@@ -335,7 +335,15 @@ function wallpaper() {
   const dust = Array.from({ length: MOBILE ? 26 : 70 }, () => ({ x: Math.random(), y: Math.random(), z: .2 + Math.random() * .8, v: .003 + Math.random() * .01, p: Math.random() * 6 }));
   const LAMPS = [[.14, .9], [.38, 1.1], [.63, 1], [.88, .85]];
   const mk = (w, h) => { const k = document.createElement('canvas'); k.width = Math.max(1, Math.round(w)); k.height = Math.max(1, Math.round(h)); return k; };
-  let bg = null, flick = 0, glints = [];
+  let bg = null, flick = 0, glints = [], quake = 0, flare = 0;
+  const carts = [], grit = [];
+  X.on('feed', it => {
+    if (it.kind !== 'block' || RM) return;
+    quake = 1; flare = 1;
+    for (let i = 0; i < (MOBILE ? 14 : 30); i++) grit.push({ x: Math.random() * W, y: top + 2 + Math.random() * 8, vy: 10 + Math.random() * 50, s: 1 + Math.random() * 2.2, c: Math.random() < .25 ? '255,214,140' : '120,92,64' });
+    if (carts.length < 3) carts.push({ x: -90 - carts.length * 120, sym: it.symbol, sol: Number(it.sol || 0), h: it.height });
+  });
+  X.mineCart = (sym, sol, h) => carts.push({ x: -90, sym, sol, h });
   function build() {
     const floor = H - bar; bg = mk(W * D, H * D); const q = bg.getContext('2d'); q.scale(D, D);
     const gr = q.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#030201'); gr.addColorStop(.55, '#0b0603'); gr.addColorStop(1, '#1a0f06'); q.fillStyle = gr; q.fillRect(0, 0, W, H);
@@ -364,8 +372,15 @@ function wallpaper() {
     if (document.hidden || now - last < (MOBILE ? 55 : 40)) return; const dt = Math.max(0, Math.min(.1, (now - last) / 1000)); last = now;
     if (!bg) build();
     sx += (mx - sx) * .05; sy += (my - sy) * .05;
-    g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(bg, 0, 0); g.setTransform(D, 0, 0, D, 0, 0);
+    const qx = quake > 0 ? (Math.random() - .5) * 7 * quake : 0, qy = quake > 0 ? (Math.random() - .5) * 4 * quake : 0; quake = Math.max(0, quake - dt * 1.4);
+    g.setTransform(1, 0, 0, 1, 0, 0); if (qx || qy) { g.fillStyle = '#030201'; g.fillRect(0, 0, c.width, c.height); } g.drawImage(bg, Math.round(qx * D), Math.round(qy * D)); g.setTransform(D, 0, 0, D, 0, 0);
     const floor = H - bar;
+    // the lamps flare when a block lands
+    if (flare > 0) { for (const [fx] of LAMPS) { const x = fx * W, rg = g.createRadialGradient(x, top + 14, 0, x, top + 14, 90); rg.addColorStop(0, `rgba(255,214,140,${(.45 * flare).toFixed(3)})`); rg.addColorStop(1, 'rgba(255,170,60,0)'); g.fillStyle = rg; g.fillRect(x - 90, top - 76, 180, 180); } flare = Math.max(0, flare - dt * .9); }
+    // grit shaken off the ceiling
+    for (let i = grit.length - 1; i >= 0; i--) { const p = grit[i]; p.vy += 260 * dt; p.y += p.vy * dt; if (p.y > floor - 4) { grit.splice(i, 1); continue; } g.fillStyle = `rgba(${p.c},.8)`; g.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s); }
+    // a cart of gold rolls along the rails for every block found
+    for (let i = carts.length - 1; i >= 0; i--) { const k = carts[i]; k.x += (MOBILE ? 120 : 165) * dt; if (k.x > W + 120) { carts.splice(i, 1); continue; } drawCart(k, floor, now); }
     // one lantern gutters now and then
     if (Math.random() < dt / 9) flick = now;
     if (now - flick < 260 && (now / 40 | 0) % 2) { const x = LAMPS[2][0] * W, wd = LAMPS[2][1]; g.fillStyle = 'rgba(3,2,1,.55)'; g.beginPath(); g.moveTo(x - 30 * wd, top + 14); g.lineTo(x + 30 * wd, top + 14); g.lineTo(x + 200 * wd, floor); g.lineTo(x - 200 * wd, floor); g.closePath(); g.fill(); }
@@ -374,6 +389,15 @@ function wallpaper() {
       p.y -= p.v * dt * (1 + p.z) * .6; p.x += Math.sin(now / 1900 + p.p) * .0003; if (p.y < -.02) { p.y = 1.02; p.x = Math.random(); }
       g.fillStyle = `rgba(255,214,160,${(.06 + p.z * .26).toFixed(2)})`; g.fillRect(Math.round(p.x * W + (sx - .5) * -60 * p.z), Math.round(p.y * H + (sy - .5) * -24 * p.z), 1 + p.z * 2, 1 + p.z * 2);
     }
+  }
+  function drawCart(k, floor, now) {
+    const x = Math.round(k.x), y = floor - 7, b = Math.round(Math.sin(now / 60 + x) * .6);
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x + 3, y + 3, 58, 3);
+    g.fillStyle = '#4a3320'; g.fillRect(x + 4, y - 18 + b, 56, 16); g.fillStyle = '#a07a48'; g.fillRect(x + 2, y - 20 + b, 60, 3); g.fillStyle = '#6a4a28'; g.fillRect(x + 10, y - 17 + b, 3, 14); g.fillRect(x + 51, y - 17 + b, 3, 14); g.fillStyle = '#2a1d12'; g.fillRect(x + 4, y - 4 + b, 56, 2);
+    g.fillStyle = '#c98a2c'; g.beginPath(); g.ellipse(x + 32, y - 20 + b, 26, 9, 0, Math.PI, 0); g.fill(); g.fillStyle = '#f2c14e'; g.beginPath(); g.ellipse(x + 30, y - 21 + b, 21, 7, 0, Math.PI, 0); g.fill();
+    g.fillStyle = '#fff1cf'; g.fillRect(x + 22, y - 26 + b, 3, 2); g.fillRect(x + 38, y - 24 + b, 2, 2);
+    const sp = (now / 70 | 0) % 2; [[x + 15, y], [x + 49, y]].forEach(([wx, wy]) => { g.fillStyle = '#0f0a06'; g.beginPath(); g.arc(wx, wy - 1, 5, 0, 7); g.fill(); g.fillStyle = '#c9a46a'; g.fillRect(wx - 1 + sp, wy - 2, 2, 2); });
+    g.font = '13px PX, monospace'; g.textAlign = 'center'; g.fillStyle = 'rgba(0,0,0,.6)'; const t = `$${k.sym} #${k.h}${k.sol > 0 ? `  +${fsol(k.sol)} SOL` : ''}`; g.fillText(t, x + 33, y - 33 + b); g.fillStyle = '#ffd27a'; g.fillText(t, x + 32, y - 34 + b); g.textAlign = 'left';
   }
   requestAnimationFrame(frame);
 }

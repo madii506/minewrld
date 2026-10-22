@@ -44,6 +44,8 @@ export function installPets(X) {
   X.on('buds', sync); X.on('settings', sync); sync();
   // a real job: the bag, a hop, coins, the amount floating up, and a line about it
   X.on('feed', it => {
+    // every miner on the taskbar hops when a block lands anywhere
+    if (it.kind === 'block') pets.forEach((q, k) => { if (k !== it.mint && q.y === 0 && !q.drag) { q.vy = 120 + Math.random() * 60; q.air = true; q.sq = -.8; } });
     const p = pets.get(it.mint); if (!p) return;
     p.bagT = performance.now() + 5000; p.state = 'walk'; p.v = 60;
     if (p.y === 0) { p.vy = 170; p.air = true; p.sq = -1; }
