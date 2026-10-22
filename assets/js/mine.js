@@ -314,6 +314,44 @@ export function build(scene, mobile) {
     const plate = (w, h, sw, sh, seed) => { const g = new THREE.PlaneGeometry(w, h, sw, sh), p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, (fbm(p.getX(i) * .8 + seed, p.getY(i) * .8 + seed * .3, seed) - .5) * .32); g.computeVertexNormals(); return g; };
     const veinG = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), std({ color: 0xffb040, emissive: 0xff8a10, emissiveIntensity: 1.6, metalness: .5, roughness: .35 }), 260); let vg = 0;
     const W = 2.4, Z0 = 1.5, Z1 = 8.4, D = Z1 - Z0, ZM = (Z0 + Z1) / 2, Hh = OPEN_H;
+    // the legends: in every gallery, three paintings of big pump.fun coins of the past. one on the back wall, two on the side
+    // walls turned toward the shaft. the frames go up now; the pictures arrive from /api/legends a moment later.
+    const gilt = std({ color: 0xb98a3a, metalness: .78, roughness: .3 }), giltDark = std({ color: 0x3a2a14, metalness: .5, roughness: .6 });
+    const lampM = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.6, .9), toneMapped: false });
+    const canvasLook = (img, sym) => tex(512, 512, (g, w, h) => {      // the picture as an oil painting: cover-fit, a little varnish and age
+      g.fillStyle = '#1a120a'; g.fillRect(0, 0, w, h);
+      if (img) { const k = Math.max(w / img.width, h / img.height), iw = img.width * k, ih = img.height * k; g.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih); }
+      else { g.fillStyle = '#2a1d10'; g.fillRect(0, 0, w, h); for (let i = 0; i < 90; i++) { g.strokeStyle = `rgba(${90 + rnd() * 60 | 0},${60 + rnd() * 40 | 0},${30 + rnd() * 20 | 0},.18)`; g.lineWidth = 6 + rnd() * 14; g.beginPath(); const x = rnd() * w, y = rnd() * h; g.moveTo(x, y); g.lineTo(x + (rnd() - .5) * 160, y + (rnd() - .5) * 60); g.stroke(); }
+        if (sym) { g.textAlign = 'center'; g.font = `${Math.min(150, 760 / Math.max(3, sym.length))}px PX, monospace`; g.fillStyle = '#e8b866'; g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.fillText('$' + sym, w / 2, h / 2 + 40); g.shadowBlur = 0; } }
+      const v = g.createRadialGradient(w / 2, h / 2, w * .3, w / 2, h / 2, w * .75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.45)'); g.fillStyle = v; g.fillRect(0, 0, w, h);
+      const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,240,210,.10)'); sh.addColorStop(.5, 'rgba(255,240,210,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(255,220,160,.035)'; for (let i = 0; i < 2600; i++) g.fillRect(rnd() * w, rnd() * h, 2, 2); });
+    const plaqueLook = sym => tex(512, 120, (g, w, h) => { const b = g.createLinearGradient(0, 0, 0, h); b.addColorStop(0, '#d9ab55'); b.addColorStop(1, '#8a6224'); g.fillStyle = b; g.fillRect(0, 0, w, h);
+      g.strokeStyle = 'rgba(60,36,8,.8)'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12); g.textAlign = 'center'; g.font = '64px PX, monospace'; g.fillStyle = 'rgba(255,240,200,.35)'; g.fillText(sym ? '$' + sym : '', w / 2 + 2, 84); g.fillStyle = '#2e1c06'; g.fillText(sym ? '$' + sym : '', w / 2, 82); });
+    P.paintings = [];
+    const painting = (rg, lv, slot) => {
+      const big = slot === 0, S = big ? 1.08 : .72, sx = slot === 1 ? -1 : 1, g = new THREE.Group(); rg.add(g);
+      if (big) { g.position.set(0, 1.42, Z1 - .26); g.rotation.y = Math.PI; }
+      else { g.position.set(sx * .8, 1.5, 2.62); g.rotation.y = sx * -(Math.PI / 2 + .62); }
+      mesh(new THREE.BoxGeometry(S + .13, S + .13, .05), gilt, 0, 0, 0, g, false);
+      mesh(new THREE.BoxGeometry(S + .03, S + .03, .056), giltDark, 0, 0, 0, g, false);
+      const mat = std({ map: canvasLook(null, ''), emissive: 0xffffff, emissiveMap: null, emissiveIntensity: .38, roughness: .8 }); mat.emissiveMap = mat.map;
+      mesh(new THREE.PlaneGeometry(S, S), mat, 0, 0, .03, g, false);
+      const pm = std({ map: plaqueLook(''), metalness: .55, roughness: .35, emissive: 0xffffff, emissiveIntensity: .12 }); pm.emissiveMap = pm.map;
+      mesh(new THREE.PlaneGeometry(S * .5, S * .5 * 120 / 512), pm, 0, -S / 2 - .1, .03, g, false);
+      // a picture light over the frame, and the bracket that holds a side painting off the rock
+      mesh(new THREE.BoxGeometry(S * .55, .03, .07), gilt, 0, S / 2 + .12, .07, g, false); mesh(new THREE.BoxGeometry(S * .5, .012, .03), lampM, 0, S / 2 + .1, .1, g, false);
+      if (!big) mesh(new THREE.BoxGeometry(.05, .05, .5), iron, 0, 0, -.26, g, false);
+      return { mat, pm, lv, slot };
+    };
+    const hang = list => list.forEach(l => {
+      const p = P.paintings.find(q => q.lv === l.lv && q.slot === l.slot); if (!p) return;
+      const sym = String(l.symbol || '').toUpperCase().slice(0, 10);
+      p.pm.map = plaqueLook(sym); p.pm.emissiveMap = p.pm.map; p.pm.needsUpdate = true;
+      p.mat.map = canvasLook(null, sym); p.mat.emissiveMap = p.mat.map; p.mat.needsUpdate = true;
+      const im = new Image(); im.decoding = 'async'; im.onload = () => { p.mat.map = canvasLook(im, sym); p.mat.emissiveMap = p.mat.map; p.mat.needsUpdate = true; }; im.src = l.img;
+    });
+    fetch('/api/legends').then(r => r.json()).then(j => hang(j.legends || [])).catch(() => {});
     LV.forEach((l, li) => {
       const rg = new THREE.Group(); rg.position.set(0, l.y, ZS); rg.rotation.y = l.side > 0 ? Math.PI / 2 : -Math.PI / 2; scene.add(rg); rg.updateMatrixWorld(true);
       const fl = mesh(plate(W, D, 8, 18, 3 + li), roomRock, 0, .01, ZM, rg, false); fl.rotation.x = -Math.PI / 2;
@@ -334,6 +372,7 @@ export function build(scene, mobile) {
       const m1 = makeMiner(rg, 1.15); m1.position.set(-.62, .12, 3.1); m1.rotation.y = Math.PI; P.buds.push(m1);
       const m2 = makeMiner(rg, .95); m2.position.set(.78, .44 + .1, 6.0); m2.rotation.y = Math.PI; P.buds.push(m2);
       if (li === 1) { const m3 = makeMiner(rg, 1.0); m3.position.set(.5, .12, 2.6); m3.rotation.y = Math.PI; P.buds.push(m3); }
+      for (let slot = 0; slot < 3; slot++) P.paintings.push(painting(rg, li, slot));
       // gold in the gallery walls
       const Q3 = new THREE.Quaternion(), E3 = new THREE.Euler(), S6 = new THREE.Vector3(), lm = new THREE.Matrix4();
       for (let c = 0; c < 14; c++) { const onLeft = rnd() < .5, zz = Z0 + .4 + rnd() * (D - .7), yy = .4 + rnd() * 1.9, back = c > 11;
