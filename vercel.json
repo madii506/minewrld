@@ -22,7 +22,7 @@
       "destination": "/api/minewrld?op=img&id=:id"
     },
     {
-      "source": "/api/:op(config|prepare|paybuild|relay|status|veins|vein|work|submit|eligible|ping|blocks|feed|stats|tick|blockhash|selftest)",
+      "source": "/api/:op(config|prepare|paybuild|relay|status|veins|vein|work|submit|eligible|ping|blocks|feed|stats|tick|blockhash|selftest|legends|limg)",
       "destination": "/api/minewrld?op=:op"
     }
   ],
