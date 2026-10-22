@@ -11,7 +11,6 @@ export function installShare(X) {
   const dur = s => s == null ? '' : s < 1 ? 'under a second' : s < 90 ? Math.round(s) + ' s' : s < 5400 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h';
   const mineOf = d => (X.MINES || []).find(m => m.mint === d.mint) || {};
   const isMe = d => !!d.miner && (d.miner === (X.RIG && X.RIG.miner) || d.miner === ((X.WAL && X.WAL.current && X.WAL.current()) || {}).address);
-  const site = () => /^(localhost|127\.)/.test(location.hostname) ? 'minewrld.vercel.app' : location.host.replace(/^www\./, '');
 
   // ---------------------------------------------------------------- the card
   async function draw(d) {
@@ -43,6 +42,13 @@ export function installShare(X) {
     g.textBaseline = 'alphabetic'; g.textAlign = 'left';
     g.font = '64px PX, monospace'; g.fillStyle = '#ffd27a'; g.fillText('$' + sym, tx, 122);
     g.font = '24px JB, monospace'; g.fillStyle = 'rgba(246,232,210,.62)'; g.fillText((m.name || '') + (m.level ? ' · ' + m.level + ' level' : ''), tx, 154);
+    if (d.kind === 'mine') {   // a mine, not a block: the coin, what the next block pays, an invitation
+      const fresh = !Number(m.blocks || d.blocks || 0);
+      g.font = '96px PX, monospace'; g.fillStyle = '#3a2210'; g.fillText(fresh ? 'A NEW MINE' : `BLOCK #${m.height ?? d.height ?? 0} NEXT`, x0 + 5, 292); g.fillStyle = '#fff1cf'; g.fillText(fresh ? 'A NEW MINE' : `BLOCK #${m.height ?? d.height ?? 0} NEXT`, x0, 286);
+      const pool = Number(m.pool ?? d.pool ?? 0);
+      g.font = '54px PX, monospace'; g.fillStyle = '#ffb347'; g.shadowColor = 'rgba(255,170,60,.6)'; g.shadowBlur = 24; g.fillText(fresh && !pool ? 'block #0 is waiting' : `next block pays ${fsol(pool)} SOL`, x0, 372); g.shadowBlur = 0;
+      g.font = '24px JB, monospace'; g.fillStyle = 'rgba(246,232,210,.82)'; g.fillText('your browser mines it. every block pays its finder', x0, 428); g.fillText('the creator fees in the pool, in SOL.', x0, 462);
+    } else {
     // the block
     g.font = '118px PX, monospace'; g.fillStyle = '#3a2210'; g.fillText('BLOCK #' + d.height, x0 + 5, 302); g.fillStyle = '#fff1cf'; g.fillText('BLOCK #' + d.height, x0, 296);
     const rew = Number(d.reward || 0);
@@ -55,28 +61,32 @@ export function installShare(X) {
     g.font = '22px JB, monospace'; g.fillStyle = 'rgba(246,232,210,.8)';
     const who = isMe(d) ? 'found by my browser' : `found by ${short(d.miner || '')}`;
     g.fillText(who + (d.secs != null ? ` in ${dur(Number(d.secs))}` : '') + (z ? ` · ${z} leading zeros` : ''), x0, 474);
+    }
     // footer
     g.fillStyle = 'rgba(8,5,2,.88)'; g.fillRect(0, H - 64, W, 64); g.fillStyle = '#6e4520'; g.fillRect(0, H - 64, W, 2);
     if (spr) g.drawImage(spr, 40, H - 58, 52, 52);
     g.font = '40px PX, monospace'; g.fillStyle = '#ffb347'; g.fillText('mine', 104, H - 18);
     g.font = '20px JB, monospace'; g.fillStyle = 'rgba(246,232,210,.7)'; g.fillText('every coin is a mine. your browser mines it.', 218, H - 24);
-    g.textAlign = 'right'; g.fillStyle = '#ffd27a'; g.fillText(site(), W - 40, H - 24);
+    g.textAlign = 'right'; g.font = '24px PX, monospace'; g.fillStyle = '#ffd27a'; g.fillText('every block pays SOL', W - 40, H - 22);
     return c;
   }
 
   // ---------------------------------------------------------------- the window
+  const link = d => location.origin + '/?mine=' + encodeURIComponent(d.mint);
   const text = d => { const rew = Number(d.reward || 0), sym = d.symbol || mineOf(d).symbol || '';
-    return (isMe(d) ? `my browser just mined block #${d.height} of $${sym} on Mine${rew > 0 ? ` and got paid ${fsol(rew)} SOL` : ''} ⛏` : `block #${d.height} of $${sym} was mined in a browser on Mine${rew > 0 ? ` and paid ${fsol(rew)} SOL` : ''} ⛏`) + '\n\n' + location.origin.replace(/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, 'https://minewrld.vercel.app'); };
+    if (d.kind === 'mine') return (d.launched ? `I just opened a mine on Mine: $${sym}. block #0 is waiting. your browser mines it and every block pays SOL ⛏` : `$${sym} is a mine on Mine. your browser mines it and every block pays SOL ⛏`) + '\n\n' + link(d);
+    return (isMe(d) ? `my browser just mined block #${d.height} of $${sym} on Mine${rew > 0 ? ` and got paid ${fsol(rew)} SOL` : ''} ⛏` : `block #${d.height} of $${sym} was mined in a browser on Mine${rew > 0 ? ` and paid ${fsol(rew)} SOL` : ''} ⛏`) + '\n\n' + link(d); };
   async function render(d) {
     if (!S.el) return; S.d = d; S.blob = null; const my = ++S.busy;
     $('.sh-st', S.el).textContent = 'drawing…';
     const c = await draw(d); if (my !== S.busy) return;
     c.toBlob(b => { if (my !== S.busy) return; S.blob = b; $('.sh-st', S.el).textContent = ''; }, 'image/png');
-    $('.sh-h', S.el).innerHTML = `<b>$${esc(d.symbol || mineOf(d).symbol || '')} · block #${esc(d.height)}</b><small class="dim">${isMe(d) ? 'your block. post it, the picture is made from the real block.' : 'any block can be a picture. this one is real, checkable in chain.exe.'}</small>`;
-    X.WM.retitle('share', `share.exe — block #${d.height}`);
+    const sym = esc(d.symbol || mineOf(d).symbol || '');
+    $('.sh-h', S.el).innerHTML = d.kind === 'mine' ? `<b>$${sym} · the mine</b><small class="dim">${d.launched ? 'your new mine. post it so the first miners find it.' : 'a picture of this mine, from its live numbers.'}</small>` : `<b>$${sym} · block #${esc(d.height)}</b><small class="dim">${isMe(d) ? 'your block. post it, the picture is made from the real block.' : 'any block can be a picture. this one is real, checkable in chain.exe.'}</small>`;
+    X.WM.retitle('share', d.kind === 'mine' ? `share.exe — $${d.symbol || mineOf(d).symbol || ''}` : `share.exe — block #${d.height}`);
   }
   const blob = () => S.blob ? Promise.resolve(S.blob) : new Promise(res => S.cv.toBlob(res, 'image/png'));
-  const fname = () => `mine-${(S.d.symbol || 'block').toLowerCase()}-${S.d.height}.png`;
+  const fname = () => `mine-${(S.d.symbol || mineOf(S.d).symbol || 'block').toLowerCase()}${S.d.kind === 'mine' ? '' : '-' + S.d.height}.png`;
   async function save() { const b = await blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = fname(); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); SOUND.sfx('tick'); }
   async function copyImg() { try { const b = await blob(); await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); X.toast('image copied. paste it into your post.'); SOUND.sfx('ding'); } catch { X.toast('your browser won’t copy images. save it instead.'); } }
   function post() { window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text(S.d)), '_blank', 'noopener,noreferrer'); }
@@ -101,7 +111,7 @@ export function installShare(X) {
       const acts = { post, copy: copyImg, save, native };
       $$('[data-x]', el).forEach(b => b.onclick = () => acts[b.dataset.x]());
     },
-    open(arg) { if (arg && arg.height != null) render(arg); },
+    open(arg) { if (arg && (arg.height != null || arg.kind === 'mine')) render(arg); },
   };
   // anything can ask for a card: rig.exe after a find, chain.exe on any block
   X.shareBlock = d => X.open('share', d);

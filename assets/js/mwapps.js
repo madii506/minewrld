@@ -193,9 +193,10 @@ export function installApps(X) {
         setTimeout(() => { const im = $('.born img', el); if (im) { const r = im.getBoundingClientRect(); X.fx.burst(r.left + r.width / 2, r.top + r.height / 2, { n: 44, speed: 200, colors: ['#ffb347', '#ffd27a', '#fff1cf', '#ff8a5c', '#e8a33c'] }); } }, 60);
         $('.lw-done', el).innerHTML = `<div class="born"><img src="/i/${esc(s.id)}" alt=""><div><h3 class="h">the mine is open.</h3><p class="dim">$${esc(s.symbol)} is live on pump.fun and its mine is its creator. block #0 is waiting to be found. every block pays its finder the fees in the pool${s.devCut ? `, after your ${s.devCut}% cut` : ''}.</p>
           <p>${link(pumpfun(s.mint), 'open on pump.fun ↗')} · ${link(acct(s.wallet), 'the mine’s wallet ↗')}${s.create_sig ? ' · ' + link(solscan(s.create_sig), 'create tx ↗') : ''}</p>
-          <div class="row"><button class="btn go" type="button" data-x="rig">mine it now</button><button class="btn" type="button" data-x="vein">see the mine</button><button class="btn" type="button" data-x="again">launch another</button></div></div></div>`;
+          <div class="row"><button class="btn go" type="button" data-x="rig">mine it now</button><button class="btn" type="button" data-x="share">share it</button><button class="btn" type="button" data-x="vein">see the mine</button><button class="btn ghost" type="button" data-x="again">launch another</button></div></div></div>`;
         $('[data-x=rig]', el).onclick = () => X.open('rig', { mint: s.mint });
         $('[data-x=vein]', el).onclick = () => X.openMine(s.mint);
+        $('[data-x=share]', el).onclick = () => X.shareBlock && X.shareBlock({ kind: 'mine', launched: true, mint: s.mint, id: s.id, symbol: s.symbol, img: '/i/' + s.id, pool: 0, blocks: 0, height: 0 });
         $('[data-x=again]', el).onclick = () => { L.id = null; L.img = null; $('.drop', el).classList.remove('has'); el.querySelectorAll('input:not([type=range]):not([type=checkbox]), textarea').forEach(i => { if (i.name !== 'dev') i.value = ''; }); $('.lw-done', el).innerHTML = ''; go(0); };
       }
       L.go = go; L.resume = async id => { L.id = id; go(3); steps('wait'); watch(); };
@@ -274,11 +275,12 @@ export function installApps(X) {
     let m = m0;
     el.innerHTML = `<div class="vn"><div class="vn-top"><img src="${esc(m.img)}" alt=""><div class="vn-id"><b>$${esc(m.symbol)}</b> <span class="lvl">${esc(m.level || 'shallow')}</span><small>${esc(m.name)} · dev cut ${m.devCut}%</small>
         <div class="vn-links">${link(pumpfun(m.mint), 'pump.fun ↗')} ${link('https://dexscreener.com/solana/' + m.mint, 'chart ↗')} ${link(acct(m.wallet), 'mine wallet ↗')}</div></div>
-        <button class="btn go vn-mine" type="button">⛏ mine $${esc(m.symbol)}</button></div>
+        <div class="vn-acts"><button class="btn go vn-mine" type="button">⛏ mine $${esc(m.symbol)}</button><button class="btn ghost vn-share" type="button">share</button></div></div>
       <div class="vn-stats"></div>
       <div class="vn-lad"></div>
       <div class="vn-cols"><div><h4>latest blocks</h4><div class="vn-blocks scroll"></div></div><div><h4>top miners</h4><div class="vn-top8"></div><h4>the mine’s log</h4><div class="vn-log scroll"></div></div></div></div>`;
     $('.vn-mine', el).onclick = () => X.open('rig', { mint: m.mint });
+    $('.vn-share', el).onclick = () => X.shareBlock && X.shareBlock({ kind: 'mine', mint: m.mint, id: m.id, symbol: m.symbol, img: m.img, pool: m.pool, blocks: m.blocks, height: m.height });
     const stats = () => {
       $('.vn-stats', el).innerHTML = [['next block pays', fsol(m.pool) + ' SOL', 'gold'], ['chain height', '#' + m.height, ''], ['paid to miners', fsol(m.paid) + ' SOL', ''], ['mining now', m.miners + (m.rate ? ' · ' + hs(m.rate) : ''), ''], ['a block takes', '~' + big(m.expected) + ' hashes', ''], ['last block', m.lastBlockAt ? ago(m.lastBlockAt) + ' ago' : 'none yet', '']]
         .map(([t, v, c]) => `<div class="${c}"><b>${esc(v)}</b><span>${esc(t)}</span></div>`).join('');

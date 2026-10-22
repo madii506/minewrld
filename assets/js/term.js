@@ -92,6 +92,9 @@ export function installTerm(X) {
     print(`<span class="dim">${esc(pad('engine', 22))}</span>${j.tickAt ? 'last pass ' + ago(j.tickAt) + ' ago' : 'no pass yet'}`);
   });
   add('dash dashboard', 'open stats.exe', () => X.open('stats'));
+  add('mountain map', 'open mountain.exe: every mine, live', () => X.open('mountain'));
+  add('share', 'make a picture of a mine to post', (args) => { const m = X.mineBy((args && args[0]) || '') || (X.MINES || [])[0]; if (!m) return say('no mines yet. launch one first.', 'dim'); X.shareBlock({ kind: 'mine', mint: m.mint, id: m.id, symbol: m.symbol, img: m.img, pool: m.pool, blocks: m.blocks, height: m.height }); say(`drew $${m.symbol}. look in share.exe.`, 'ok'); });
+  C.share.args = '[$TICKER]';
 
   add('blocks chain', 'a mine’s chain, newest first', async a => {
     const m = await findMine(a[0]); const j = await api('blocks', { params: { mint: m.mint, limit: 16 } });
@@ -164,7 +167,7 @@ export function installTerm(X) {
     print('<span class="dim">a block     </span>checked on arrival, then the pool is paid to its finder in one transaction with the hash in the memo');
     print('<span class="dim">custody     </span>each mine is a wallet held by this engine. it can claim, pay the dev and pay finders. it cannot sell.');
   }, 'system');
-  const APPMAP = { terminal: 'term', term: 'term', launch: 'launch', veins: 'veins', mines: 'veins', rig: 'rig', 'rig.exe': 'rig', chain: 'chain', 'chain.exe': 'chain', ledger: 'ledger', readme: 'readme', stats: 'stats', 'stats.exe': 'stats', dash: 'stats', paint: 'paint', display: 'display', bin: 'bin' };
+  const APPMAP = { mountain: 'mountain', 'mountain.exe': 'mountain', share: 'share', terminal: 'term', term: 'term', launch: 'launch', veins: 'veins', mines: 'veins', rig: 'rig', 'rig.exe': 'rig', chain: 'chain', 'chain.exe': 'chain', ledger: 'ledger', readme: 'readme', stats: 'stats', 'stats.exe': 'stats', dash: 'stats', paint: 'paint', display: 'display', bin: 'bin' };
   add('open run', 'open a window: open chain', a => { const m = APPMAP[a[0]]; if (!m) return say('open what? rig, launch, veins, chain, stats, ledger, readme, paint, display', 'dim'); X.open(m); }, 'system');
   C.open.args = '<app>';
   add('dir', 'list files', () => print(['readme.txt', 'rig.exe', 'launch.exe', 'chain.exe', 'stats.exe', 'paint.exe', 'ledger.db', '<span class="mute">sleep.exe (deleted)</span>'].map(f => `<span class="ok">${f}</span>`).join('   ')), 'system');
