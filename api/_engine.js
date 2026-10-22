@@ -1,4 +1,4 @@
-// The engine. It is custodial, and says so: every coin launched on minewrld gets its own wallet (the mine), derived on
+// The engine. It is custodial, and says so: every coin launched on Mine gets its own wallet (the mine), derived on
 // this server from one master secret, and that wallet is the coin's pump.fun creator. Every minute the engine claims the
 // coin's creator fees into the mine. The dev's cut (0–30%, locked at launch) goes to the dev; the rest fills the pool.
 // Each coin runs its own proof-of-work chain: browsers search for a hash under the target, and whoever finds the next
@@ -54,8 +54,8 @@ async function keys(id) {
 const newId = () => crypto.randomBytes(9).toString('base64url');
 
 // ---------- the chain ----------
-const genesis = mint => crypto.createHash('sha256').update('minewrld genesis ' + mint).digest('hex');
-const header = (mint, height, prev, miner, nonce) => `minewrld|${mint}|${height}|${prev}|${miner}|${nonce}`;
+const genesis = mint => crypto.createHash('sha256').update('mine genesis ' + mint).digest('hex');
+const header = (mint, height, prev, miner, nonce) => `mine|${mint}|${height}|${prev}|${miner}|${nonce}`;
 const hashOf = s => crypto.createHash('sha256').update(s).digest('hex');
 const head64 = hex => BigInt('0x' + hex.slice(0, 16));
 const big = v => BigInt(String(v).split('.')[0] || '0');
@@ -269,7 +269,7 @@ async function submit(id, height, nonce, miner) {
 }
 async function payBlock(c, height, hash, miner, reward) {
   const k = await keys(c.id); const { PublicKey, SystemProgram, TransactionInstruction } = w3();
-  const memo = new TransactionInstruction({ programId: new PublicKey(MEMO), keys: [], data: Buffer.from(`minewrld $${c.symbol} block #${height} ${hash}`) });
+  const memo = new TransactionInstruction({ programId: new PublicKey(MEMO), keys: [], data: Buffer.from(`mine $${c.symbol} block #${height} ${hash}`) });
   let sig = null;
   try {
     const tx = await buildTx(k.wallet, [SystemProgram.transfer({ fromPubkey: k.wallet.publicKey, toPubkey: new PublicKey(miner), lamports: reward }), memo]);

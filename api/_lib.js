@@ -1,4 +1,4 @@
-// minewrld's shared server code. Every upstream call has a timeout and an honest failure message.
+// Mine's shared server code. Every upstream call has a timeout and an honest failure message.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36';
 const SOL = 'So11111111111111111111111111111111111111112';
 const RPCS = (process.env.RPC_URLS || process.env.RPC_URL || 'https://solana-rpc.publicnode.com,https://api.mainnet-beta.solana.com').split(',').map(s => s.trim()).filter(Boolean);

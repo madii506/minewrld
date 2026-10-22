@@ -1,4 +1,4 @@
-// minewrld's one function. Every route the site uses comes through here (vercel.json rewrites /api/<op> to ?op=<op>).
+// Mine's one function. Every route the site uses comes through here (vercel.json rewrites /api/<op> to ?op=<op>).
 //  GET  config                 what launching costs, the mining rules, whether launching is open
 //  POST prepare                record the coin and its locked dev cut; returns the mine's wallet and the deposit it needs
 //  POST paybuild {id}          the deposit as an unsigned transfer, for the launcher's wallet to sign
@@ -45,7 +45,7 @@ async function upload(img, f, site, id) {
       return { uri: meta, via: 'pinata ipfs' };
     } catch {}
   }
-  return { uri: site + '/m/' + id, via: 'minewrld' };
+  return { uri: site + '/m/' + id, via: 'mine' };
 }
 async function picture(dataUrl) {
   const m = /^data:image\/(png|jpe?g|webp|gif);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
@@ -198,7 +198,7 @@ async function work(req, res) {
   const last = await L.q(`SELECT miner FROM mw_blocks WHERE id=$1 ORDER BY height DESC LIMIT $2`, [c.id, E.COOLDOWN]);
   L.send(res, 200, { ok: true, id: c.id, mint: c.mint, symbol: c.symbol, height: c.height, prev: c.prev, target: T.toString(), targetHex: T.toString(16).padStart(16, '0'),
     expected: E.expected(T), since: +E.since(c).toFixed(1), pool: SOL(pool), reward: pool >= E.MIN_PAY ? SOL(pool - 20000) : 0, minHold: 100000, cooldown: last.map(b => b.miner),
-    header: `minewrld|${c.mint}|${c.height}|${c.prev}|<miner>|<nonce>`, now: Date.now() });
+    header: `mine|${c.mint}|${c.height}|${c.prev}|<miner>|<nonce>`, now: Date.now() });
 }
 async function submit(req, res) {
   const b = await L.body(req, 4096);
@@ -298,7 +298,7 @@ async function selftest(req, res) {
     const v = j.result && j.result.value; return { err: v ? v.err : j.error && j.error.message, logs: v && v.logs ? v.logs.slice(-4) : [] }; };
   const out = {}; const w = Keypair.generate(), mk = Keypair.generate();
   const step = async (name, fn) => { const t0 = Date.now(); try { out[name] = { ok: true, ...(await fn()), ms: Date.now() - t0 }; } catch (e) { out[name] = { ok: false, error: String(e.message).slice(0, 200), ms: Date.now() - t0 }; } };
-  await step('create', async () => { const tx = await E.portal({ publicKey: w.publicKey.toBase58(), action: 'create', tokenMetadata: { name: 'minewrld selftest', symbol: 'TEST', uri: L.origin(req) + '/m/selftest' }, mint: mk.publicKey.toBase58(), denominatedInSol: 'true', amount: 0.01, slippage: 10, priorityFee: 0.0001, pool: 'pump' }, [mk, w]);
+  await step('create', async () => { const tx = await E.portal({ publicKey: w.publicKey.toBase58(), action: 'create', tokenMetadata: { name: 'mine selftest', symbol: 'TEST', uri: L.origin(req) + '/m/selftest' }, mint: mk.publicKey.toBase58(), denominatedInSol: 'true', amount: 0.01, slippage: 10, priorityFee: 0.0001, pool: 'pump' }, [mk, w]);
     return { bytes: tx.serialize().length, sim: await sim(tx) }; });
   await step('claim', async () => { const tx = await E.portal({ publicKey: w.publicKey.toBase58(), action: 'collectCreatorFee', priorityFee: 0.00001, pool: 'pump' }, [w]); return { bytes: tx.serialize().length, sim: await sim(tx) }; });
   await step('hash', async () => { const h = E.hashOf(E.header('MINT', 0, E.genesis('MINT'), 'MINER', '42')); return { sample: h.slice(0, 16), engine: 'sha256' }; });
