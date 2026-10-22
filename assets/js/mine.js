@@ -314,11 +314,6 @@ export function build(scene, mobile) {
     const plate = (w, h, sw, sh, seed) => { const g = new THREE.PlaneGeometry(w, h, sw, sh), p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, (fbm(p.getX(i) * .8 + seed, p.getY(i) * .8 + seed * .3, seed) - .5) * .32); g.computeVertexNormals(); return g; };
     const veinG = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), std({ color: 0xffb040, emissive: 0xff8a10, emissiveIntensity: 1.6, metalness: .5, roughness: .35 }), 260); let vg = 0;
     const W = 2.4, Z0 = 1.5, Z1 = 8.4, D = Z1 - Z0, ZM = (Z0 + Z1) / 2, Hh = OPEN_H;
-    const lvSign = (l) => tex(1024, 320, (g, w, h) => {
-      g.fillStyle = '#20160d'; g.fillRect(0, 0, w, h); for (let i = 0; i < 60; i++) { g.strokeStyle = `rgba(0,0,0,${.15 + rnd() * .25})`; g.lineWidth = 1 + rnd() * 3; const y = rnd() * h; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y + (rnd() - .5) * 6); g.stroke(); }
-      g.fillStyle = '#0e0905'; g.fillRect(0, 0, w, 12); g.fillRect(0, h - 12, w, 12);
-      g.textAlign = 'center'; g.font = '132px PX, monospace'; g.fillStyle = '#ffb347'; g.shadowColor = 'rgba(255,170,70,.65)'; g.shadowBlur = 26; g.fillText(l.name, w / 2, 160);
-      g.shadowBlur = 0; g.font = '58px VT, monospace'; g.fillStyle = '#f2e6cc'; g.fillText(l.sub, w / 2, 250); });
     LV.forEach((l, li) => {
       const rg = new THREE.Group(); rg.position.set(0, l.y, ZS); rg.rotation.y = l.side > 0 ? Math.PI / 2 : -Math.PI / 2; scene.add(rg); rg.updateMatrixWorld(true);
       const fl = mesh(plate(W, D, 8, 18, 3 + li), roomRock, 0, .01, ZM, rg, false); fl.rotation.x = -Math.PI / 2;
@@ -329,9 +324,6 @@ export function build(scene, mobile) {
       for (const zz of [1.62, 3.95, 6.3]) { for (const sx of [-1.08, 1.08]) mesh(new THREE.CylinderGeometry(.075, .085, Hh, 10), tw, sx, Hh / 2, zz, rg, false); mesh(new THREE.BoxGeometry(2.45, .17, .2), tw, 0, Hh - .09, zz, rg, false); }
       for (const sx of [-.3, .3]) mesh(new THREE.BoxGeometry(.04, .045, D - .1), steel, sx, .06, ZM, rg, false);
       for (let zz = Z0 + .2; zz < Z1 - .1; zz += .46) mesh(new THREE.BoxGeometry(.9, .045, .12), wood, 0, .03, zz, rg, false);
-      // the sign on the cap beam, facing the shaft
-      const stx = lvSign(l), sb = mesh(new THREE.PlaneGeometry(1.42, .44), new THREE.MeshStandardMaterial({ map: stx, roughness: .7, emissive: 0xffffff, emissiveMap: stx, emissiveIntensity: .45 }), 0, 1.94, 1.5, rg, false); sb.rotation.y = Math.PI;
-      for (const sx of [-.55, .55]) mesh(new THREE.CylinderGeometry(.008, .008, .25, 4), iron, sx, 2.27, 1.52, rg, false);
       // a cart of glowing ore, a crate, miners
       const cart = new THREE.Group(); cart.position.set(0, 0, 4.9); rg.add(cart);
       const body = new THREE.BoxGeometry(.66, .38, .9); const bp = body.attributes.position; for (let i = 0; i < bp.count; i++) if (bp.getY(i) > 0) { bp.setX(i, bp.getX(i) * 1.18); bp.setZ(i, bp.getZ(i) * 1.1); }
@@ -357,11 +349,6 @@ export function build(scene, mobile) {
     veinG.count = vg; scene.add(veinG);
     // one warm light rides down with you from level to level
     P.levelLight = new THREE.PointLight(0xffb060, 0, 11, 1.3); scene.add(P.levelLight);
-    // bedrock: the sign over the tunnel at the bottom of the shaft
-    const bt = tex(1024, 224, (g, w, h) => { g.fillStyle = '#20160d'; g.fillRect(0, 0, w, h); g.fillStyle = '#0e0905'; g.fillRect(0, 0, w, 10); g.fillRect(0, h - 10, w, 10);
-      g.textAlign = 'center'; g.font = '112px PX, monospace'; g.fillStyle = '#ffd27a'; g.shadowColor = 'rgba(255,200,110,.7)'; g.shadowBlur = 26; g.fillText('BEDROCK', w / 2, 120); g.shadowBlur = 0; g.font = '50px VT, monospace'; g.fillStyle = '#f2e6cc'; g.fillText('level 4  ·  2,500+ blocks  ·  the terminal is this way', w / 2, 190); });
-    mesh(new THREE.PlaneGeometry(1.5, .33), std({ map: bt, roughness: .7, emissive: 0xffffff, emissiveMap: bt, emissiveIntensity: .35 }), 0, 1.98, Z_IN - 2.25, scene, false);
-    for (const sx of [-.6, .6]) mesh(new THREE.CylinderGeometry(.008, .008, .2, 4), iron, sx, 2.24, Z_IN - 2.25, scene, false);
   }
   // ---- eyes in the cracks: little ones, mostly hidden in the walls. a few watch the mouth already; the rest turn as you pass.
   const tinyBody = new THREE.SphereGeometry(.12, 14, 10), tinyHat = new THREE.SphereGeometry(.1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -448,18 +435,20 @@ export function build(scene, mobile) {
   const board = new THREE.Mesh(new THREE.PlaneGeometry(1.0, .625), new THREE.MeshBasicMaterial({ map: chartT, toneMapped: false })); slate.add(board);
   for (const lx of [-.42, .42]) { const l = mesh(new THREE.BoxGeometry(.035, 1.1, .035), std({ color: 0x3a2a1c, roughness: .8 }), lx, -.55, -.06, slate, false); }
   P.chartGlow = new THREE.PointLight(0xffc070, .25, 1.8, 2); P.chartGlow.position.set(1.15, 1.2, deskZ + .9); scene.add(P.chartGlow);
-  const rows = []; let hgt = 811;
-  const chalk = (t) => {
-    if (rows.length === 0 || t - (rows.lastT || 0) > 1.6) { rows.lastT = t; hgt++; rows.unshift([hgt, (rnd() * .08 + .004).toFixed(4), ['7Hk2…9fPa', 'Dq1x…4mZe', '3vNw…aa8Q', 'Bc9r…p2Lu'][hgt % 4]]); rows.length = Math.min(rows.length, 6); }
+  // the real last blocks, handed in by the intro once it has them; until then, or if there are none, the truth
+  let rows = null, drawnFor = '';
+  const chalk = () => {
+    const key = JSON.stringify(rows); if (key === drawnFor) return; drawnFor = key;
     cg.fillStyle = '#16120e'; cg.fillRect(0, 0, CW, CH);
-    for (let i = 0; i < 1600; i++) { cg.fillStyle = `rgba(230,220,200,${Math.random() * .035})`; cg.fillRect(Math.random() * CW, Math.random() * CH, 2, 2); }
-    cg.font = '54px VT, monospace'; cg.fillStyle = '#f2e6cc'; cg.fillText('BLOCKS FOUND TONIGHT', 46, 84);
+    for (let i = 0; i < 1600; i++) { cg.fillStyle = `rgba(230,220,200,${rnd() * .035})`; cg.fillRect(rnd() * CW, rnd() * CH, 2, 2); }
+    cg.font = '54px VT, monospace'; cg.fillStyle = '#f2e6cc'; cg.fillText(rows && rows.length ? 'LAST BLOCKS FOUND' : 'BLOCKS FOUND TONIGHT', 46, 84);
     cg.fillStyle = 'rgba(242,230,204,.5)'; cg.fillRect(46, 104, 600, 3);
     cg.font = '44px VT, monospace';
-    rows.forEach(([h, sol, who], i) => { cg.fillStyle = i === 0 ? '#ffc56a' : `rgba(242,230,204,${.9 - i * .12})`; cg.fillText(`#${h}  ${who}  +${sol} SOL`, 46, 170 + i * 72); });
+    if (rows && rows.length) rows.slice(0, 6).forEach((r, i) => { cg.fillStyle = i === 0 ? '#ffc56a' : `rgba(242,230,204,${.9 - i * .12})`; cg.fillText(`$${r.symbol} #${r.height}  ${r.miner}${r.sol > 0 ? `  +${r.sol} SOL` : ''}`, 46, 170 + i * 72); });
+    else { cg.fillStyle = '#ffc56a'; cg.fillText('none yet.', 46, 170); cg.fillStyle = 'rgba(242,230,204,.8)'; cg.fillText('the first one is still', 46, 250); cg.fillText('in the rock.', 46, 310); cg.fillStyle = 'rgba(242,230,204,.55)'; cg.fillText('type  mine  to dig for it.', 46, 420); }
     chartT.needsUpdate = true;
   };
-  P.chartTick = t => chalk(t); chalk(0);
+  P.chartTick = () => chalk(); P.chartData = r => { rows = r; chalk(); }; chalk();
   // a miner sits on the desk by the terminal
   const dm = makeMiner(scene, .7); dm.position.set(.6, DH, deskZ + .05); P.buds.push(dm); P.jarBud = dm;
 

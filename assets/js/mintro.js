@@ -52,7 +52,7 @@ class Terminal {
   push(runs) { this.lines.push(runs); while (this.lines.length > this.max) this.lines.shift(); this.dirty = true; return this.lines.length - 1; }
   set(i, runs) { this.lines[i] = runs; this.dirty = true; }
   clear() { this.lines = []; this.dirty = true; this.flick = 1; }
-  get busy() { return this.power < 1 || this.wobble > 0 || this.mode === 'tunnel' || (this.logo > 0 && this.logo < 1) || this.flick > 0 || this.glitch > 0 || this.peek; }
+  get busy() { return this.power < 1 || this.wobble > 0 || this.mode === 'tunnel' || this.mode === 'os' || (this.logo > 0 && this.logo < 1) || this.flick > 0 || this.glitch > 0 || this.peek; }
   draw(now, dt) {
     const blink = Math.floor(now / 530) % 2 === 0;
     if (!this.dirty && blink === this.blink && !this.busy && !this.first) return;
@@ -68,8 +68,9 @@ class Terminal {
     }
     const r = g.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, W * .7); r.addColorStop(0, '#2c1a06'); r.addColorStop(1, '#0a0602');
     g.fillStyle = r; g.fillRect(0, 0, W, H);
-    if (this.mode === 'eyes') this.drawFace(g); else if (this.mode === 'tunnel') this.drawTunnel(g); else this.drawText(g, blink, now);
+    if (this.mode === 'os') this.drawOS(g, now); else if (this.mode === 'eyes') this.drawFace(g); else if (this.mode === 'tunnel') this.drawTunnel(g); else this.drawText(g, blink, now);
     this.glass(g);
+    if (this.flash > 0) { g.fillStyle = `rgba(255,236,206,${Math.min(1, this.flash).toFixed(3)})`; g.fillRect(0, 0, W, H); }
     this.compose(dt);
   }
   drawText(g, blink, now) {
@@ -102,6 +103,21 @@ class Terminal {
       const x = run([['C:\\MINE> ', C.ok], [this.input, C.white]], this.X, y);
       if (blink) { g.fillStyle = C.ink; g.fillRect(x + 2, y + 6, 15, this.LH - 8); }
     }
+  }
+  drawOS(g, now) {
+    const W = this.W, H = this.H, k = Math.max(0, Math.min(1, this.osK || 0));
+    const r = g.createRadialGradient(W / 2, H * .44, 30, W / 2, H * .44, W * .62); r.addColorStop(0, '#3b2509'); r.addColorStop(1, '#0a0602'); g.fillStyle = r; g.fillRect(0, 0, W, H);
+    g.textBaseline = 'top'; g.font = '30px VT, monospace'; g.fillStyle = C.dim; g.fillText('MINE OS  v1.0', 44, 34); g.textAlign = 'right'; g.fillText(new Date().toTimeString().slice(0, 5), W - 44, 34); g.textAlign = 'left';
+    const px = 24, rows = Array(9).fill(''); for (const ch of 'mine') GLYPHS[ch].forEach((row, i) => rows[i] += row + '.');
+    const sw = this.sprite ? 6 * 32 : 0, lw = rows[0].length * px, x0 = Math.round((W - lw - (sw ? sw + 26 : 0)) / 2), y0 = 196;
+    g.shadowColor = C.ok; g.shadowBlur = 26; g.fillStyle = C.ok;
+    rows.forEach((row, ry) => [...row].forEach((c, rx) => { if (c === 'X') g.fillRect(x0 + rx * px, y0 + ry * px, px - 1, px - 1); }));
+    if (this.sprite) { const sx = x0 + lw + 26, sy = y0 - 10, bob = Math.round(Math.sin(now / 260) * 3); g.imageSmoothingEnabled = false; g.shadowColor = 'rgba(255,190,90,.6)'; g.shadowBlur = 22; g.drawImage(this.sprite.body, sx, sy + bob, sw, sw); g.shadowColor = '#fff1d6'; g.shadowBlur = 16; g.drawImage(this.sprite.eyes, sx, sy + bob, sw, sw); }
+    g.shadowBlur = 0; g.textAlign = 'center'; g.font = '44px VT, monospace'; g.fillStyle = C.ink; g.fillText('every coin is a mine.', W / 2, y0 + 9 * px + 44);
+    const bw = 520, bh = 26, bx = (W - bw) / 2, by = 604;
+    g.font = '30px VT, monospace'; g.fillStyle = C.dim; g.fillText(k < 1 ? `going in …  ${Math.round(k * 100)}%` : 'welcome down.', W / 2, by - 44);
+    g.strokeStyle = C.ok; g.lineWidth = 3; g.strokeRect(bx, by, bw, bh);
+    const fw = Math.round((bw - 8) * k); g.fillStyle = C.ok; g.shadowColor = C.ok; g.shadowBlur = 14; for (let x = 0; x < fw; x += 16) g.fillRect(bx + 4 + x, by + 4, Math.min(12, fw - x), bh - 8); g.shadowBlur = 0; g.textAlign = 'left';
   }
   drawFace(g) {
     const W = this.W, H = this.H, s = 22, sw = 32 * s; g.fillStyle = '#040201'; g.fillRect(0, 0, W, H);
@@ -158,7 +174,7 @@ function shots(portrait, P) {
   const SH = P.SH, ZS = P.ZS;
   const A = [[V(14, SH + 15, ZS + 35), V(0, SH + 3, ZS)], [V(8, SH + 9.5, ZS + 24), V(-.3, SH + 3.6, ZS)], [V(3, SH + 4.8, ZS + 15), V(.2, SH + 3.4, ZS)],
     [V(-.6, SH + 1.85, ZS + 8.6), V(.4, SH + 2.9, ZS)], [V(-.32, SH + 1.7, ZS + 4.9), V(.1, SH + 2.25, ZS - .2)], [V(-.05, SH + 1.6, ZS + 2.3), V(0, SH + 1.25, ZS - 1.6)], [V(0, SH + 1.5, ZS + .12), V(0, SH + .4, ZS - 2.0)]];
-  const end = portrait ? [V(.02, 1.5, -5.15), V(0, 1.22, -7.62)] : [V(.03, 1.5, -5.3), V(0, 1.18, -7.62)];
+  const end = portrait ? [V(.02, 1.5, -5.15), V(0, 1.22, -7.62)] : [V(.03, 1.47, -5.6), V(0, 1.2, -7.62)];
   const E = [[V(0, 1.5, ZS + .12), V(0, 1.3, ZS - 4)], [V(-.05, 1.5, 6.0), V(.22, 1.12, 1.2)], [V(-.25, 1.5, 3.4), V(.3, 1.02, -1.2)], [V(-.3, 1.48, .6), V(.18, 1.05, -3.6)], [V(-.1, 1.5, -2.6), V(.04, 1.15, -6.2)], end];
   const mk = pts => { const c = new THREE.CatmullRomCurve3(pts, false, 'centripetal'); c.arcLengthDivisions = 2400; return c; };
   const curve = L => ({ pos: mk(L.map(a => a[0])), look: mk(L.map(a => a[1])) });
@@ -216,6 +232,8 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
   const onScreen = () => { ray.setFromCamera(ndc, cam); return ray.intersectObject(P.screen, false).length > 0; };
   const budUnder = () => { ray.setFromCamera(ndc, cam); const hits = ray.intersectObjects(P.buds, true); if (!hits.length) return null; let o = hits[0].object; while (o && !P.buds.includes(o)) o = o.parent; return o; };
   let NOW = performance.now();
+  const fsol = n => { n = Number(n || 0); return n < .001 ? n.toFixed(5) : n < 1 ? n.toFixed(4) : n.toFixed(3); };
+  fetch('/api/blocks?all=1&limit=6').then(r => r.json()).then(j => P.chartData((j.blocks || []).map(b => ({ symbol: b.symbol, height: b.height, miner: String(b.miner || '').slice(0, 4) + '…' + String(b.miner || '').slice(-4), sol: b.reward > 0 ? fsol(b.reward) : 0 })))).catch(() => {});
   Promise.resolve(status).then(s => { st.status = s; }).catch(() => {});
   const say = runs => term.push(Array.isArray(runs[0]) ? runs : [[runs[0], runs[1]]]);
   const hdd = on => { P.hddMat.color.setHex(on ? 0xffb648 : 0x2a1c08); };
@@ -332,13 +350,13 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     if (st.phase === 'dive' || st.done) return;
     if (st.phase !== 'ready') { st.pending = cmd; skip(); return; }
     st.freeze = null; st.phase = 'dive'; st.cmd = cmd; st.diveT = NOW; st.diveFrom = cam.position.clone(); st.diveLook = (st.look || S.end[1]).clone(); term.prompt = false;
-    say([['lights out', C.ok], [' …', C.dim]]); hdd(true); canvas.style.cursor = 'default';
+    say([['going in', C.ok], [' …', C.dim]]); hdd(true); canvas.style.cursor = 'default';
     intro.classList.add('diving');
     SHAFT.forEach(b => { b.t0 = null; b.want = 0; });
     const far = [...TUN].sort((a, b) => b.g.position.distanceTo(cam.position) - a.g.position.distanceTo(cam.position));
     far.forEach((b, k) => { b.t0 = NOW + 120 + k * 135; b.want = 0; setTimeout(() => sfx('clunk', .5), 120 + k * 135); });
     P.crts.forEach((c, k) => c.offT = NOW + 300 + k * 160);
-    setTimeout(() => { term.mode = 'eyes'; term.dirty = true; sfx('beep'); }, 700);
+    setTimeout(() => { term.mode = 'os'; term.osK = 0; term.glitch = .7; term.dirty = true; sfx('beep'); }, 380);
   }
   function key(e) {
     if (st.done) return;
@@ -459,13 +477,15 @@ export async function run({ canvas, onEnter, onReady, mobile, status, audio }) {
     pos.y += (1 - Math.cos(t * 5.2)) * .006 * walking - .006 * walking; pos.x += Math.sin(t * 2.6) * .008 * walking;
     pos.x += Math.sin(t * .35) * .02 * (1 - ride) + st.mx * .06 * settle; pos.y += Math.sin(t * .5) * .01 * (1 - ride) - st.my * .03 * settle;
     if (st.lean > .001) { pos.lerp(P.SCREEN_C, st.lean * .14); look.lerp(P.SCREEN_C, st.lean * .3); }
-    if (st.phase === 'dive') {
-      const a = (NOW - st.diveT) / 1000, e = ease(clamp01(a / 3));
-      pos = st.diveFrom.clone().add(V(0, -.05 * e, .32 * e)); look = st.diveLook.clone().add(V(0, -.02 * e, 0));
-      st.dark = clamp01((a - 1.1) / 1.1);
-      renderer.toneMappingExposure = 1.1 * (1 - st.dark * .9); bloom.strength = .7 + st.dark * 1.4;
-      st.eyeBoost = 1 + st.dark * 2.5; st.shut = clamp01((a - 2.55) / .22);
-      if (a >= 3.05 && !st.done) { st.done = true; cleanup(); onEnter(st.cmd); return; }
+    if (st.phase === 'dive') {   // through the screen: the room goes dark, the camera flies in until the screen is all there is
+      const a = (NOW - st.diveT) / 1000, tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), dd = Math.min(.6 / (2 * tv * cam.aspect), .45 / (2 * tv)) * .84;
+      const e = ease(clamp01((a - .2) / 2.75)), aim = ease(clamp01(a / 1.4));
+      pos = st.diveFrom.clone().lerp(tmp2.copy(P.SCREEN_C).add(V(0, 0, dd)), e); look = st.diveLook.clone().lerp(P.SCREEN_C, aim);
+      st.dark = clamp01((a - .45) / 1.5);
+      renderer.toneMappingExposure = 1.1 * (1 - st.dark * .18); bloom.strength = .7 + st.dark * .25;   // the lights go out on their own; the screen keeps its glow
+      st.eyeBoost = 1 + st.dark * 1.8; st.shut = clamp01((a - 2.5) / .3);
+      term.osK = clamp01((a - .55) / 2.25); term.flash = clamp01((a - 2.95) / .28) * .9;
+      if (a >= 3.3 && !st.done) { st.done = true; cleanup(); onEnter(st.cmd); return; }
     }
     st.look = look; cam.position.copy(pos); cam.lookAt(look);
     if (!mobile) { st.sf = (st.sf || 0) + 1; if (pos.z < 3.5 && st.sf % 2 === 0) renderer.shadowMap.needsUpdate = true; }

@@ -7,7 +7,7 @@ export function installMountain(X) {
   const A = {};
   let W0 = 384, S = 2; const H0 = 216;
   const LV = [{ name: 'shallow', from: 0, y1: 104, col: [62, 46, 33] }, { name: 'deep', from: 25, y1: 140, col: [52, 37, 27] }, { name: 'deeper', from: 250, y1: 176, col: [44, 30, 21] }, { name: 'bedrock', from: 2500, y1: H0, col: [34, 23, 17] }];
-  const M = { el: null, cv: null, g: null, bg: null, bgFor: '', raf: 0, last: 0, cam: 0, camT: 0, drag: null, hover: -1, parts: [], texts: [], flash: {}, lay: [], width: 384, t0: performance.now() };
+  const M = { born: {}, el: null, cv: null, g: null, bg: null, bgFor: '', raf: 0, last: 0, cam: 0, camT: 0, drag: null, hover: -1, parts: [], texts: [], flash: {}, lay: [], width: 384, t0: performance.now() };
   const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   // the range: a few peaks with rolling saddles between them
   const ridge = x => 66 - 24 * (Math.max(0, Math.sin(x * .0165 + .9)) ** 1.6) - 9 * (Math.sin(x * .047 + 2.1) * .5 + .5) - 2.2 * Math.sin(x * .19 + .3);
@@ -25,6 +25,9 @@ export function installMountain(X) {
     // tickers that would touch their neighbour go up a row
     M.lay.forEach((L, i) => { const p = M.lay[i - 1]; L.row = p && p.row === 0 && Math.abs(p.y0 - L.y0) < 12 && (String(p.m.symbol).length + String(L.m.symbol).length) * 2.3 + 6 > gap ? 1 : 0; });
     M.width = Math.max(W0, x0 + list.length * gap + 70);
+    // a mine that opens while you watch gets dug in front of you
+    if (M.seen) M.lay.forEach(L => { if (!M.seen.has(L.m.mint)) { M.born[L.m.mint] = performance.now(); M.texts.push({ x: L.x, y: L.y0 - 30, s: `$${L.m.symbol} is open`, life: 3.4 }); if (L.x < M.camT + 20 || L.x > M.camT + W0 - 80) M.camT = Math.max(0, L.x - W0 / 2); } });
+    M.seen = new Set(list.map(m => m.mint));
   }
   // everything that doesn't move, drawn once per layout
   function buildBg() {
@@ -100,6 +103,17 @@ export function installMountain(X) {
     M.lay.forEach((L, i) => {
       const { m, x, y0, y1, h } = L, active = m.miners > 0, hov = i === M.hover, fl = M.flash[m.mint] ? Math.max(0, 1 - (now - M.flash[m.mint]) / 1800) : 0;
       if (x - cx < -40 || x - cx > W0 + 40) return;
+      const bornAt = M.born[m.mint], bp = bornAt ? Math.min(1, (now - bornAt) / 2800) : 1;
+      if (bp < 1) {   // being dug: the headframe rises, the shaft goes down, grit flies
+        const e = 1 - Math.pow(1 - bp, 3), up = Math.min(1, bp * 2.2), dy = Math.round((1 - up) * 13), bot = Math.round(y0 + (y1 - y0) * e);
+        g.fillStyle = '#0b0805'; g.fillRect(x - 3, y0, 7, bot - y0); g.fillStyle = '#5a3e22'; for (let y = y0 + 3; y < bot - 2; y += 5) g.fillRect(x - 3, y, 7, 1);
+        g.fillStyle = 'rgba(255,190,90,.25)'; g.fillRect(x - 3, y0, 7, bot - y0);
+        if (Math.random() < .8) for (let q = 0; q < 2; q++) M.parts.push({ x: x + (Math.random() - .5) * 6, y: bot, vx: (Math.random() - .5) * 40, vy: -20 - Math.random() * 40, life: .35 + Math.random() * .3, c: Math.random() < .25 ? '#ffd27a' : '#8a6a4a' });
+        g.save(); g.beginPath(); g.rect(x - 8, y0 - 30, 17, 30); g.clip();
+        g.fillStyle = '#6a4a28'; g.fillRect(x - 4, y0 - 9 + dy, 1, 9); g.fillRect(x + 4, y0 - 9 + dy, 1, 9); g.fillRect(x - 4, y0 - 10 + dy, 9, 1); g.fillRect(x - 3, y0 - 5 + dy, 7, 1); g.fillStyle = '#8a6a40'; g.fillRect(x - 1, y0 - 13 + dy, 3, 3); g.restore();
+        g.font = font(7); g.textAlign = 'center'; g.fillStyle = `rgba(255,179,71,${up.toFixed(2)})`; g.fillText('$' + String(m.symbol).slice(0, 8), x, y0 - 16 - L.row * 9);
+        return;
+      }
       // the shaft, with timber sets, lit warm while people work it
       g.fillStyle = hov ? '#2a1d10' : '#0b0805'; g.fillRect(x - 3, y0, 7, y1 - y0);
       g.fillStyle = '#5a3e22'; for (let y = y0 + 3; y < y1 - 2; y += 5) g.fillRect(x - 3, y, 7, 1);
